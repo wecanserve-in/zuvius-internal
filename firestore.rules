@@ -106,7 +106,7 @@ service cloud.firestore {
         && request.resource.data.isActive == resource.data.isActive
         && request.resource.data.email == resource.data.email
         && request.resource.data.diff(resource.data).changedKeys().hasOnly([
-          'displayName', 'photoURL', 'photoUploadId', 'phone', 'fcmTokens', 'updatedAt'
+          'displayName', 'photoURL', 'photoUploadId', 'photoObjectKey', 'phone', 'fcmTokens', 'updatedAt'
         ]);
 
       allow update: if isActiveUser() && isAdmin()
@@ -599,7 +599,14 @@ service cloud.firestore {
 
     match /uploads/{uploadId} {
       allow read: if isActiveUser() && (
-        resource.data.ownerId == request.auth.uid || isAdmin()
+        resource.data.ownerId == request.auth.uid
+        || isAdmin()
+        || (
+          resource.data.relatedEntityType == 'conversation'
+          && resource.data.relatedEntityId is string
+          && exists(/databases/$(database)/documents/conversations/$(resource.data.relatedEntityId))
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(resource.data.relatedEntityId)).data.memberIds
+        )
       );
       allow create: if isActiveUser()
         && request.resource.data.ownerId == request.auth.uid

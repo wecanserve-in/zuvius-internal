@@ -66,6 +66,8 @@ export interface AppUser {
   photoURL?: string
   /** R2 upload doc id — use getDownloadUrl; do not store permanent URLs. */
   photoUploadId?: string
+  /** R2 object key for presigned/public profile image URLs. */
+  photoObjectKey?: string
   departmentIds: string[]
   role: UserRole
   isActive: boolean

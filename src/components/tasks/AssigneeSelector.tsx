@@ -5,13 +5,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatUserRole } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
+import { usePhotoUrl } from '@/hooks/usePhotoUrl'
 import type { AppUser } from '@/types'
 
 function UserAvatar({ user }: { user: AppUser }) {
-  if (user.photoURL) {
+  const src = usePhotoUrl(user)
+  if (src) {
     return (
       <img
-        src={user.photoURL}
+        src={src}
         alt=""
         className="h-8 w-8 shrink-0 rounded-full object-cover"
       />

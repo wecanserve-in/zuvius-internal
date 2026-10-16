@@ -21,17 +21,15 @@ export function hasDirectR2Credentials(): boolean {
   )
 }
 
-/** AddCourse-style browser PutObject when R2 keys are available (dev hydrates from functions/.env). */
+/** AddCourse-style browser PutObject when VITE_R2_* keys are in the build (local or Vercel). */
 export function canUseDirectR2Upload(): boolean {
   if (import.meta.env.VITE_UPLOAD_DIRECT_R2 === 'false') return false
-  if (!hasDirectR2Credentials()) return false
-  if (import.meta.env.VITE_UPLOAD_DIRECT_R2 === 'true') return true
-  return import.meta.env.DEV
+  return hasDirectR2Credentials()
 }
 
 export const DIRECT_R2_KEYS_HINT =
-  'Set VITE_R2_ACCESS_KEY_ID and VITE_R2_SECRET_ACCESS_KEY in .env.local (copy from AddCourse), ' +
-  'or add R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY to functions/.env.internal-chat-bc793 and restart npm run dev.'
+  'Add VITE_R2_ACCESS_KEY_ID, VITE_R2_SECRET_ACCESS_KEY, VITE_R2_ACCOUNT_ID, VITE_R2_BUCKET_NAME ' +
+  '(and VITE_UPLOAD_DIRECT_R2=true) to .env.local or Vercel → Project Settings → Environment Variables, then redeploy.'
 
 export function validateUploadClient(contentType: string, size: number): void {
   if (size <= 0 || size > MAX_UPLOAD_BYTES) {

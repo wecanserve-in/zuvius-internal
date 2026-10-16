@@ -42,6 +42,7 @@ const allowedOrigins = [
   'http://127.0.0.1:5173',
   'https://internal-chat-bc793.web.app',
   'https://internal-chat-bc793.firebaseapp.com',
+  'https://zuvius-internal.vercel.app',
 ]
 
 /** Gen2 HTTP/callables — public invoker so browser OPTIONS preflight succeeds. */

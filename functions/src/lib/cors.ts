@@ -6,6 +6,7 @@ export const UPLOAD_HTTP_ALLOWED_ORIGINS = [
   'http://127.0.0.1:5173',
   'https://internal-chat-bc793.web.app',
   'https://internal-chat-bc793.firebaseapp.com',
+  'https://zuvius-internal.vercel.app',
 ]
 
 /** For Firebase `onRequest({ cors })` — must be a plain string array. */
@@ -16,6 +17,7 @@ export function isAllowedUploadOrigin(origin: string | undefined): boolean {
   if ((UPLOAD_HTTP_ALLOWED_ORIGINS as readonly string[]).includes(origin)) return true
   if (/^http:\/\/localhost:\d+$/.test(origin)) return true
   if (/^http:\/\/127\.0\.0\.1:\d+$/.test(origin)) return true
+  if (/^https:\/\/zuvius-internal(-[a-z0-9-]+)?\.vercel\.app$/.test(origin)) return true
   return false
 }
 

@@ -22,13 +22,13 @@ export function SettingsPage() {
     setUploading(true)
     try {
       const contentType = file.type || 'image/jpeg'
-      const { uploadId, fileUrl } = await uploadProfilePhoto(
+      const { uploadId, objectKey, fileUrl } = await uploadProfilePhoto(
         profile.id,
         file,
         file.name,
         contentType,
       )
-      await setProfilePhotoUploadId(profile.id, uploadId, fileUrl)
+      await setProfilePhotoUploadId(profile.id, uploadId, objectKey, fileUrl)
     } catch (err) {
       setUploadError(formatUploadCallableError(err))
     } finally {

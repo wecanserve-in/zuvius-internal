@@ -171,7 +171,8 @@ async function postUploadHttpOnce<T>(url: string, body: Record<string, unknown>)
 async function postUploadHttp<T>(functionName: string, body: Record<string, unknown>): Promise<T> {
   const skipCloudFallback =
     import.meta.env.VITE_UPLOAD_DIRECT_R2 === 'true' ||
-    import.meta.env.VITE_UPLOAD_USE_VITE_PROXY === 'false'
+    import.meta.env.VITE_UPLOAD_USE_VITE_PROXY === 'false' ||
+    (import.meta.env.PROD && !hasDirectR2Credentials())
 
   const urls = uploadRequestUrls(functionName)
   let last: unknown
@@ -222,6 +223,9 @@ export async function checkUploadBackendReady(): Promise<boolean> {
 
 function assertDirectR2OrExplain(): void {
   if (canUseDirectR2Upload()) return
+  if (import.meta.env.PROD && !hasDirectR2Credentials()) {
+    throw new UploadApiError('failed-precondition', DIRECT_R2_KEYS_HINT)
+  }
   if (import.meta.env.VITE_UPLOAD_DIRECT_R2 === 'true' && !hasDirectR2Credentials()) {
     throw new UploadApiError('failed-precondition', DIRECT_R2_KEYS_HINT)
   }
@@ -308,7 +312,7 @@ export async function uploadProfilePhoto(
   file: Blob,
   fileName: string,
   contentType: string,
-): Promise<{ uploadId: string; fileUrl?: string }> {
+): Promise<{ uploadId: string; objectKey: string; fileUrl?: string }> {
   const { uploadId, objectKey, uploadUrl, fileUrl: initialUrl } = await requestUpload({
     fileName,
     contentType,
@@ -322,7 +326,7 @@ export async function uploadProfilePhoto(
     objectKey,
     confirmed.fileUrl ?? initialUrl,
   )
-  return { uploadId, fileUrl }
+  return { uploadId, objectKey, fileUrl }
 }
 
 /** New task attachments before the task doc exists (self profile upload gate). */

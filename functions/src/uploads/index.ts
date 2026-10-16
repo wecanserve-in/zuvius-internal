@@ -8,6 +8,7 @@ const callCors = {
     'http://127.0.0.1:5173',
     'https://internal-chat-bc793.web.app',
     'https://internal-chat-bc793.firebaseapp.com',
+    'https://zuvius-internal.vercel.app',
   ],
   invoker: 'public' as const,
 }

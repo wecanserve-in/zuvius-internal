@@ -37,6 +37,7 @@ function mapUser(id: string, data: Record<string, unknown>): AppUser {
     email: String(data.email ?? ''),
     photoURL: data.photoURL ? String(data.photoURL) : undefined,
     photoUploadId: data.photoUploadId ? String(data.photoUploadId) : undefined,
+    photoObjectKey: data.photoObjectKey ? String(data.photoObjectKey) : undefined,
     departmentIds: Array.isArray(data.departmentIds) ? data.departmentIds.map(String) : [],
     role: (data.role as AppUser['role']) ?? 'member',
     isActive: data.isActive !== false,
@@ -461,10 +462,12 @@ export async function createEmployeeComplete(
 export async function setProfilePhotoUploadId(
   userId: string,
   uploadId: string,
+  objectKey: string,
   fileUrl?: string,
 ): Promise<void> {
   await updateDoc(doc(db, 'users', userId), {
     photoUploadId: uploadId,
+    photoObjectKey: objectKey,
     ...(fileUrl ? { photoURL: fileUrl } : {}),
     updatedAt: serverTimestamp(),
   })

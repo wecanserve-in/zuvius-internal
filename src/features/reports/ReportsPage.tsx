@@ -1,22 +1,17 @@
-import { format } from 'date-fns'
 import { useEffect, useMemo, useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
 import { useAuth } from '@/features/auth/AuthContext'
 import {
-  activityLabel,
   computeDepartmentReportRows,
   computeOrgTaskSummary,
   computeStatusBreakdown,
   filterTasksByRange,
-  type OrgActivityRow,
   type ReportDateRange,
 } from '@/lib/reports/orgReports'
 import { canViewReports } from '@/lib/permissions'
 import { listDepartments } from '@/services/departments.service'
-import { loadRecentOrgActivity } from '@/services/reports.service'
 import { subscribeAllTasks } from '@/services/tasks.service'
-import { loadUsersByIds } from '@/services/users.service'
 import {
   Table,
   TableBody,
@@ -25,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import type { AppUser, Department, Task } from '@/types'
+import type { Department, Task } from '@/types'
 
 const RANGE_OPTIONS: { id: ReportDateRange; label: string }[] = [
   { id: '7d', label: 'Last 7 days' },
@@ -39,10 +34,7 @@ export function ReportsPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [departments, setDepartments] = useState<Department[]>([])
   const [range, setRange] = useState<ReportDateRange>('30d')
-  const [activity, setActivity] = useState<OrgActivityRow[]>([])
-  const [activityLoading, setActivityLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [usersById, setUsersById] = useState<Map<string, AppUser>>(new Map())
 
   useEffect(() => {
     if (!profile || !canViewReports(profile)) return
@@ -63,22 +55,6 @@ export function ReportsPage() {
     [scopedTasks, departments],
   )
 
-  useEffect(() => {
-    if (!profile || !canViewReports(profile)) return
-    setActivityLoading(true)
-    void loadRecentOrgActivity(scopedTasks)
-      .then(setActivity)
-      .catch(() => setActivity([]))
-      .finally(() => setActivityLoading(false))
-  }, [scopedTasks, profile])
-
-  useEffect(() => {
-    const ids = new Set<string>()
-    for (const row of activity) ids.add(row.actorId)
-    if (ids.size === 0) return
-    void loadUsersByIds([...ids]).then(setUsersById)
-  }, [activity])
-
   if (!profile || !canViewReports(profile)) {
     return <Navigate to="/" replace />
   }
@@ -89,7 +65,7 @@ export function ReportsPage() {
         <PageHeader
           compact
           title="Reports"
-          description="Organisation-wide task activity and department performance."
+          description="Organisation-wide task metrics and department performance."
         />
         <p className="rounded-md border border-dashed border-[var(--color-border)] px-4 py-8 text-center text-sm text-[var(--color-muted-foreground)]">
           No tasks yet. Reports will populate as work is created across the organisation.
@@ -99,11 +75,11 @@ export function ReportsPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       <PageHeader
         compact
         title="Reports"
-        description="Organisation-wide task activity and department performance."
+        description="Organisation-wide task metrics and department performance."
         action={
           <select
             aria-label="Date range"
@@ -123,13 +99,6 @@ export function ReportsPage() {
           {loadError}
         </p>
       ) : null}
-
-      <div className="flex flex-wrap gap-px overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-border)]">
-        <Metric label="Total tasks" value={summary.total} />
-        <Metric label="Completed" value={summary.completed} />
-        <Metric label="Active" value={summary.pendingOrActive} />
-        <Metric label="Overdue" value={summary.overdue} />
-      </div>
 
       <section className="space-y-2">
         <h2 className="text-sm font-medium">By status</h2>
@@ -188,45 +157,6 @@ export function ReportsPage() {
           </TableBody>
         </Table>
       </section>
-
-      <section className="space-y-2">
-        <h2 className="text-sm font-medium">Recent activity</h2>
-        {activityLoading ? (
-          <p className="text-xs text-[var(--color-muted-foreground)]">Loading activity…</p>
-        ) : activity.length === 0 ? (
-          <p className="text-xs text-[var(--color-muted-foreground)]">No history events in this range.</p>
-        ) : (
-          <ul className="divide-y rounded-md border border-[var(--color-border)] text-sm">
-            {activity.map((row) => (
-              <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
-                <div className="min-w-0">
-                  <p className="font-medium">
-                    {activityLabel(row.kind)} —{' '}
-                    <Link to={`/tasks/${row.taskId}`} className="text-[var(--color-primary)] hover:underline">
-                      {row.taskTitle}
-                    </Link>
-                  </p>
-                  <p className="text-xs text-[var(--color-muted-foreground)]">
-                    {usersById.get(row.actorId)?.displayName ?? 'Team member'}
-                  </p>
-                </div>
-                <time className="shrink-0 text-xs text-[var(--color-muted-foreground)]">
-                  {format(row.atMs, 'MMM d, h:mm a')}
-                </time>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </div>
-  )
-}
-
-function Metric({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="min-w-[5rem] flex-1 bg-[var(--color-card)] px-2.5 py-1.5">
-      <p className="text-[10px] text-[var(--color-muted-foreground)]">{label}</p>
-      <p className="text-base font-semibold tabular-nums leading-tight">{value}</p>
     </div>
   )
 }

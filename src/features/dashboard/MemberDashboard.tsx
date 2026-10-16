@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
-import { StatStrip } from '@/components/common/StatStrip'
 import { useAuth } from '@/features/auth/AuthContext'
 import { TaskTable } from '@/features/tasks/TaskTable'
-import { isTaskDueToday, isTaskOverdue, isTaskPending, subscribeMyTasks } from '@/services/tasks.service'
+import { isTaskPending, subscribeMyTasks } from '@/services/tasks.service'
 import { loadUsersByIds } from '@/services/users.service'
 import type { AppUser, Task } from '@/types'
 
+/** Assignee-only snapshot — created projects and “created by me” live on the Tasks page. */
 export function MemberDashboard() {
   const { profile } = useAuth()
   const [tasks, setTasks] = useState<Task[]>([])
@@ -23,47 +23,43 @@ export function MemberDashboard() {
     void loadUsersByIds(ids).then(setUsersById)
   }, [tasks])
 
-  const stats = useMemo(() => {
-    const dueToday = tasks.filter((t) => isTaskDueToday(t) && isTaskPending(t)).length
-    const overdue = tasks.filter((t) => isTaskOverdue(t)).length
-    const upcoming = tasks.filter((t) => isTaskPending(t) && !isTaskOverdue(t)).length
-    return { dueToday, overdue, upcoming }
-  }, [tasks])
-
   const myOpen = useMemo(
-    () => tasks.filter(isTaskPending).slice(0, 12),
-    [tasks],
+    () =>
+      tasks.filter(
+        (t) => isTaskPending(t) && profile && t.assigneeIds.includes(profile.id),
+      ),
+    [tasks, profile?.id],
   )
 
   return (
-    <div className="space-y-3">
+    <div className="min-w-0 space-y-3">
       <PageHeader
         compact
         title={`Hello, ${profile?.displayName.split(' ')[0] ?? 'there'}`}
-        description="Your tasks and messages"
+        description="Work currently assigned to you"
         action={
           <Link
-            to="/tasks"
+            to="/tasks?scope=yours&tab=mine&kind=tasks"
             className="text-sm font-medium text-[var(--color-primary)] hover:underline"
           >
-            View all tasks
+            All tasks
           </Link>
         }
       />
-      <StatStrip
-        items={[
-          { label: 'Due today', value: stats.dueToday, href: '/tasks?tab=today' },
-          { label: 'Overdue', value: stats.overdue, href: '/tasks?tab=overdue' },
-          { label: 'Upcoming', value: stats.upcoming, href: '/tasks?tab=mine' },
-        ]}
-      />
-      <section>
-        <h3 className="mb-2 text-sm font-medium">My tasks</h3>
-        <TaskTable tasks={myOpen} usersById={usersById} compact />
-      </section>
+
+      <TaskTable tasks={myOpen} usersById={usersById} compact showAssignee={false} />
+
       <p className="text-sm text-[var(--color-muted-foreground)]">
+        Projects and tasks you created are under{' '}
+        <Link
+          to="/tasks?scope=yours&tab=created&kind=projects"
+          className="text-[var(--color-primary)] hover:underline"
+        >
+          Tasks → Your work → Created by me
+        </Link>
+        .{' '}
         <Link to="/messages" className="text-[var(--color-primary)] hover:underline">
-          Open messages
+          Messages
         </Link>{' '}
         for department and direct chats.
       </p>

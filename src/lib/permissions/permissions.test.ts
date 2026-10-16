@@ -35,11 +35,13 @@ describe('permissions', () => {
     expect(canChangeRole(baseUser({ role: 'admin' }), 'super_admin')).toBe(false)
   })
 
-  it('blocks assigning org admins through department task flow', () => {
+  it('allows assigning org admins organisation-wide', () => {
     const member = baseUser({ role: 'member', departmentIds: ['d1'] })
     const admin = baseUser({ role: 'admin', departmentIds: ['d1'] })
+    const superAdmin = baseUser({ role: 'super_admin', departmentIds: [] })
     expect(canAssignTaskToUser(member, 'd1')).toBe(true)
-    expect(canAssignTaskToUser(admin, 'd1')).toBe(false)
+    expect(canAssignTaskToUser(admin, 'd1')).toBe(true)
+    expect(canAssignTaskToUser(superAdmin, 'd1')).toBe(true)
   })
 
   it('scopes task access by assignee and department', () => {

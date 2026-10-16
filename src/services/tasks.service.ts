@@ -17,6 +17,7 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase/config'
+import { ensureProjectParticipant } from '@/lib/projects/participants'
 import type {
   AppUser,
   Task,
@@ -40,11 +41,7 @@ import {
 import { getUserById } from '@/services/users.service'
 import { notifyTaskAssigneeCompleted, notifyTaskHandover } from '@/services/taskNotifications.service'
 import { postTaskCreatedChatEvents, postTaskHandoverChatEvents } from '@/services/taskChat.service'
-import {
-  confirmUpload,
-  requestUpload,
-  uploadFileToR2,
-} from '@/services/uploads.service'
+import { uploadFilesForNewTask } from '@/services/uploads.service'
 
 const tasksCol = collection(db, 'tasks')
 
@@ -68,9 +65,16 @@ function mapTask(id: string, data: Record<string, unknown>): Task {
     attachmentIds: Array.isArray(data.attachmentIds)
       ? data.attachmentIds.map(String)
       : undefined,
+    attachmentMeta: Array.isArray(data.attachmentMeta)
+      ? (data.attachmentMeta as Task['attachmentMeta'])
+      : undefined,
     formerAssigneeIds: Array.isArray(data.formerAssigneeIds)
       ? data.formerAssigneeIds.map(String)
       : undefined,
+    forwardedByIds: Array.isArray(data.forwardedByIds)
+      ? data.forwardedByIds.map(String)
+      : undefined,
+    projectId: data.projectId ? String(data.projectId) : undefined,
     createdAt: data.createdAt as Task['createdAt'],
     updatedAt: data.updatedAt as Task['updatedAt'],
     completedAt: data.completedAt as Task['completedAt'],
@@ -82,6 +86,7 @@ export interface CreateTaskInput {
   title: string
   description: string
   departmentId?: string
+  projectId?: string
   assigneeIds: string[]
   priority: Task['priority']
   deadlineAt?: Date
@@ -113,23 +118,6 @@ export async function validateTaskAssignees(
   }
 }
 
-async function uploadTaskFiles(taskId: string, files: File[]): Promise<string[]> {
-  const uploadIds: string[] = []
-  for (const file of files) {
-    const { uploadId, uploadUrl } = await requestUpload({
-      fileName: file.name,
-      contentType: file.type || 'application/octet-stream',
-      size: file.size,
-      relatedEntityType: 'task',
-      relatedEntityId: taskId,
-    })
-    await uploadFileToR2(uploadUrl, file, file.type || 'application/octet-stream')
-    await confirmUpload(uploadId)
-    uploadIds.push(uploadId)
-  }
-  return uploadIds
-}
-
 export async function createTask(
   actor: AppUser,
   input: CreateTaskInput,
@@ -143,12 +131,26 @@ export async function createTask(
     throw new Error('Department is required')
   }
   await validateTaskAssignees(actor, departmentId, input.assigneeIds)
+  const files = options?.files?.filter((f) => f.size > 0) ?? []
+  let attachmentIds: string[] = []
+  let attachmentMeta: Task['attachmentMeta']
+  if (files.length > 0) {
+    const uploaded = await uploadFilesForNewTask(actor.id, files)
+    attachmentIds = uploaded.map((u) => u.uploadId)
+    attachmentMeta = uploaded.map((u) => ({
+      uploadId: u.uploadId,
+      objectKey: u.objectKey,
+      fileName: u.fileName,
+    }))
+  }
+
   const taskRef = doc(collection(db, 'tasks'))
   await setDoc(taskRef, {
     title: input.title,
     description: input.description,
     createdBy: actor.id,
     departmentId: input.departmentId,
+    ...(input.projectId ? { projectId: input.projectId } : {}),
     assigneeIds: input.assigneeIds,
     initialAssigneeIds: input.assigneeIds,
     priority: input.priority,
@@ -156,6 +158,7 @@ export async function createTask(
     deadlineAt: input.deadlineAt ?? null,
     requiresReview: input.requiresReview ?? false,
     category: input.category ?? null,
+    ...(attachmentIds.length > 0 ? { attachmentIds, attachmentMeta } : {}),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
@@ -170,13 +173,14 @@ export async function createTask(
   }
   await assigneeBatch.commit()
 
-  const files = options?.files?.filter((f) => f.size > 0) ?? []
-  if (files.length > 0) {
-    const attachmentIds = await uploadTaskFiles(taskRef.id, files)
-    await updateDoc(taskRef, {
-      attachmentIds,
-      updatedAt: serverTimestamp(),
-    })
+  if (input.projectId) {
+    for (const userId of input.assigneeIds) {
+      try {
+        await ensureProjectParticipant(input.projectId, userId, taskRef.id)
+      } catch (err) {
+        console.error('project participant link failed', err)
+      }
+    }
   }
 
   const created = await getTask(taskRef.id)
@@ -226,16 +230,14 @@ export function subscribeMyTasks(userId: string, onData: (tasks: Task[]) => void
   })
 }
 
-/** Tasks the user forwarded (historical access, not current assignee). */
+/** Tasks the user forwarded (forward actor), newest first. */
 export function subscribeForwardedTasks(
   userId: string,
   onData: (tasks: Task[]) => void,
 ): Unsubscribe {
-  const q = query(tasksCol, where('formerAssigneeIds', 'array-contains', userId))
+  const q = query(tasksCol, where('forwardedByIds', 'array-contains', userId))
   return onSnapshot(q, (snap) => {
-    const items = snap.docs
-      .map((d) => mapTask(d.id, d.data()))
-      .filter((t) => !t.assigneeIds.includes(userId))
+    const items = snap.docs.map((d) => mapTask(d.id, d.data()))
     items.sort((a, b) => (b.updatedAt?.toMillis() ?? 0) - (a.updatedAt?.toMillis() ?? 0))
     onData(items)
   })
@@ -312,6 +314,61 @@ export function subscribeAssignedAndDepartmentTasks(
     return () => undefined
   }
   return () => unsubs.forEach((u) => u())
+}
+
+/** Department admin Tasks overview: own assignments, created tasks, and managed departments. */
+export function subscribeDepartmentAdminOverviewTasks(
+  userId: string,
+  departmentIds: string[],
+  onData: (tasks: Task[]) => void,
+): Unsubscribe {
+  let assigned: Task[] = []
+  let departmental: Task[] = []
+  let created: Task[] = []
+  const emit = () => onData(mergeTasksByUpdatedAt([assigned, departmental, created]))
+
+  const unsubs: Unsubscribe[] = []
+  if (userId) {
+    unsubs.push(
+      subscribeMyTasks(userId, (items) => {
+        assigned = items
+        emit()
+      }),
+    )
+    unsubs.push(
+      subscribeTasksCreatedBy(userId, (items) => {
+        created = items
+        emit()
+      }),
+    )
+  }
+  const deptIds = [...new Set(departmentIds)].filter(Boolean)
+  if (deptIds.length > 0) {
+    unsubs.push(
+      subscribeDepartmentTasks(deptIds, (items) => {
+        departmental = items
+        emit()
+      }),
+    )
+  }
+
+  if (unsubs.length === 0) {
+    onData([])
+    return () => undefined
+  }
+  return () => unsubs.forEach((u) => u())
+}
+
+export function subscribeTasksByProject(
+  projectId: string,
+  onData: (tasks: Task[]) => void,
+): Unsubscribe {
+  const q = query(tasksCol, where('projectId', '==', projectId))
+  return onSnapshot(q, (snap) => {
+    const items = snap.docs.map((d) => mapTask(d.id, d.data()))
+    items.sort((a, b) => (b.updatedAt?.toMillis() ?? 0) - (a.updatedAt?.toMillis() ?? 0))
+    onData(items)
+  })
 }
 
 export function subscribeTasksCreatedBy(
@@ -604,6 +661,7 @@ export async function forwardTask(
     )
 
     const former = Array.from(new Set([...(task.formerAssigneeIds ?? []), actor.id]))
+    const forwardedBy = Array.from(new Set([...(task.forwardedByIds ?? []), actor.id]))
 
     // Order matters for security rules: finish forwarder's assignee row while still on assigneeIds,
     // then update task ownership, then create the recipient assignee row.
@@ -622,6 +680,7 @@ export async function forwardTask(
     tx.update(taskRef, {
       assigneeIds: nextAssigneeIds,
       formerAssigneeIds: former,
+      forwardedByIds: forwardedBy,
       status: task.status === 'todo' ? 'in_progress' : task.status,
       updatedAt: serverTimestamp(),
     })
@@ -659,6 +718,14 @@ export async function forwardTask(
 
   const refreshed = await getTask(taskId)
   if (!refreshed) return
+
+  if (refreshed.projectId) {
+    try {
+      await ensureProjectParticipant(refreshed.projectId, newAssigneeId, taskId)
+    } catch (err) {
+      console.error('project participant link failed', err)
+    }
+  }
 
   try {
     await notifyTaskHandover(actor, refreshed, newAssigneeId, handoverNote, idempotencyKey)

@@ -18,10 +18,11 @@ import {
   subscribeReadReceipts,
 } from '@/services/conversations.service'
 import { canParticipateInConversation, formatUserRole } from '@/lib/permissions'
+import { cn } from '@/lib/utils'
 import { loadUsersByIds } from '@/services/users.service'
+import { resolveMessageAttachmentUrl } from '@/lib/attachmentUrl'
 import {
   formatUploadCallableError,
-  getDownloadUrl,
   uploadConversationAttachment,
 } from '@/services/uploads.service'
 import type { AppUser, Conversation } from '@/types'
@@ -129,24 +130,34 @@ export function ChatPage() {
   }, [profile, conversationId, messages])
 
   useEffect(() => {
+    let cancelled = false
     void (async () => {
-      const next: Record<string, string> = {}
+      const resolved: Record<string, string> = {}
       for (const m of messages) {
-        if (m.type === 'text' || !m.attachment?.uploadId) continue
-        if (m.attachment.fileUrl) {
-          next[m.id] = m.attachment.fileUrl
-          continue
-        }
+        if (m.type === 'text' || !m.attachment) continue
         try {
-          next[m.id] = await getDownloadUrl(m.attachment.uploadId)
+          const url = await resolveMessageAttachmentUrl(m.attachment)
+          if (url) resolved[m.id] = url
         } catch {
-          // R2 / functions may not be ready
+          // missing objectKey / upload config
         }
       }
-      if (Object.keys(next).length) {
-        setAttachmentUrls((prev) => ({ ...prev, ...next }))
-      }
+      if (cancelled || !Object.keys(resolved).length) return
+      setAttachmentUrls((prev) => {
+        let changed = false
+        const merged = { ...prev }
+        for (const [id, url] of Object.entries(resolved)) {
+          if (merged[id] !== url) {
+            merged[id] = url
+            changed = true
+          }
+        }
+        return changed ? merged : prev
+      })
     })()
+    return () => {
+      cancelled = true
+    }
   }, [messages])
 
   if (!conversationId || !profile) return null
@@ -276,7 +287,7 @@ export function ChatPage() {
             {detailsOpen ? 'Hide details' : 'Details'}
           </Button>
         </div>
-        <div className="flex-1 space-y-3 overflow-y-auto p-4">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden p-4">
           {messages.map((m) => (
             <MessageBubble
               key={m.id}
@@ -290,7 +301,7 @@ export function ChatPage() {
           ))}
           <div ref={bottomRef} />
         </div>
-        <div className="shrink-0 border-t border-[var(--color-border)] p-3 space-y-2">
+        <div className="shrink-0 border-t border-[var(--color-border)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] space-y-2">
           {!canSend ? (
             <p className="text-sm text-[var(--color-muted-foreground)]">
               View only — you are not a member of this chat.
@@ -381,7 +392,12 @@ export function ChatPage() {
         </div>
       </div>
       {detailsOpen ? (
-        <aside className="flex w-full shrink-0 flex-col border-l border-[var(--color-border)] bg-[var(--color-card)] sm:w-64">
+        <aside
+          className={cn(
+            'flex shrink-0 flex-col border-[var(--color-border)] bg-[var(--color-card)]',
+            'fixed inset-0 z-50 md:static md:inset-auto md:z-auto md:w-64 md:border-l',
+          )}
+        >
           <div className="flex items-center justify-between border-b border-[var(--color-border)] px-3 py-2">
             <p className="text-sm font-medium">Members</p>
             <Button type="button" variant="ghost" size="icon" onClick={() => setDetailsOpen(false)}>

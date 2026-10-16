@@ -6,19 +6,14 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/common/EmptyState'
+import { InboxFilterTabs, type InboxFilter } from '@/features/messaging/InboxFilterTabs'
 import { NewConversationPanel } from '@/features/messaging/NewConversationPanel'
+import { useMessagingInboxContext } from '@/features/messaging/MessagingInboxContext'
 import { useAuth } from '@/features/auth/AuthContext'
 import { hasMinRole } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
-import { listDepartments } from '@/services/departments.service'
-import {
-  conversationLabel,
-  ensureDepartmentChannels,
-  getMyLastReadMs,
-  subscribeInbox,
-} from '@/services/conversations.service'
-import { listUsersForMessaging, loadUsersByIds } from '@/services/users.service'
-import type { AppUser, Conversation, Department } from '@/types'
+import { conversationLabel } from '@/services/conversations.service'
+import type { Conversation } from '@/types'
 
 function ConversationRow({
   convo,
@@ -35,10 +30,8 @@ function ConversationRow({
     <Link
       to={`/messages/${convo.id}`}
       className={cn(
-        'flex items-center justify-between gap-3 border-b border-[var(--color-border)] px-3 py-2.5 transition-colors',
-        active
-          ? 'bg-[var(--color-secondary)]'
-          : 'hover:bg-[var(--color-muted)]/50',
+        'flex min-h-[4.25rem] items-center justify-between gap-3 border-b border-[var(--color-border)] px-3 py-3 transition-colors active:bg-[var(--color-muted)]/40',
+        active ? 'bg-[var(--color-secondary)]' : 'hover:bg-[var(--color-muted)]/50',
       )}
     >
       <div className="min-w-0">
@@ -61,125 +54,90 @@ function ConversationRow({
   )
 }
 
-function Section({
-  title,
-  items,
-  profile,
-  usersById,
-  unreadById,
-  activeId,
-  query,
-}: {
-  title: string
-  items: Conversation[]
-  profile: AppUser
-  usersById: Map<string, AppUser>
-  unreadById: Record<string, boolean>
-  activeId?: string
-  query: string
-}) {
-  const filtered = useMemo(() => {
-    if (!query.trim()) return items
-    const q = query.toLowerCase()
-    return items.filter((c) => {
-      const label = conversationLabel(c, profile.id, usersById).toLowerCase()
-      return label.includes(q) || (c.lastMessage ?? '').toLowerCase().includes(q)
-    })
-  }, [items, query, profile.id, usersById])
-
-  if (filtered.length === 0) return null
-  return (
-    <section>
-      <h3 className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--color-muted-foreground)]">
-        {title}
-      </h3>
-      {filtered.map((c) => (
-        <ConversationRow
-          key={c.id}
-          convo={c}
-          label={conversationLabel(c, profile.id, usersById)}
-          unread={unreadById[c.id] ?? false}
-          active={c.id === activeId}
-        />
-      ))}
-    </section>
-  )
+function filterForInbox(
+  activeId: string | undefined,
+  grouped: ReturnType<typeof useMessagingInboxContext>['grouped'],
+): InboxFilter | null {
+  if (!activeId) return null
+  if (grouped.direct.some((c) => c.id === activeId)) return 'personal'
+  if (grouped.dept.some((c) => c.id === activeId)) return 'department'
+  return null
 }
 
 export function ConversationListPanel({ className }: { className?: string }) {
   const { profile } = useAuth()
   const { conversationId: activeId } = useParams<{ conversationId?: string }>()
-  const [conversations, setConversations] = useState<Conversation[]>([])
-  const [users, setUsers] = useState<AppUser[]>([])
-  const [usersById, setUsersById] = useState<Map<string, AppUser>>(new Map())
-  const [departments, setDepartments] = useState<Department[]>([])
   const [showNew, setShowNew] = useState(false)
-  const [unreadById, setUnreadById] = useState<Record<string, boolean>>({})
   const [query, setQuery] = useState('')
+  const [filter, setFilter] = useState<InboxFilter>('personal')
+
+  const { grouped, usersById, departments, people, unreadById } = useMessagingInboxContext()
 
   useEffect(() => {
-    if (!profile) return
-    void listUsersForMessaging().then(setUsers)
-    void listDepartments().then(setDepartments)
-    return subscribeInbox(profile, setConversations)
-  }, [profile])
+    if (!activeId) return
+    const match = filterForInbox(activeId, grouped)
+    if (match) setFilter(match)
+  }, [activeId, grouped.dept, grouped.direct])
 
-  useEffect(() => {
-    const base = new Map(users.map((u) => [u.id, u]))
-    const ids = conversations.flatMap((c) => c.memberIds)
-    void loadUsersByIds(ids, base).then(setUsersById)
-  }, [users, conversations])
+  const sourceList = useMemo(() => {
+    return filter === 'personal' ? grouped.direct : grouped.dept
+  }, [filter, grouped])
 
-  useEffect(() => {
-    if (!profile || departments.length === 0) return
-    void ensureDepartmentChannels(profile, departments)
-  }, [profile, departments])
+  const filteredChats = useMemo(() => {
+    if (!profile) return []
+    if (!query.trim()) return sourceList
+    const q = query.toLowerCase()
+    return sourceList.filter((c) => {
+      const label = conversationLabel(c, profile.id, usersById).toLowerCase()
+      return label.includes(q) || (c.lastMessage ?? '').toLowerCase().includes(q)
+    })
+  }, [sourceList, query, profile, usersById])
 
-  useEffect(() => {
-    if (!profile || conversations.length === 0) return
-    void (async () => {
-      const next: Record<string, boolean> = {}
-      for (const c of conversations) {
-        if (!c.lastMessageAt) continue
-        const readMs = await getMyLastReadMs(c.id, profile.id)
-        next[c.id] = c.lastMessageAt.toMillis() > readMs
-      }
-      setUnreadById(next)
-    })()
-  }, [profile, conversations])
+  const searchPlaceholder = filter === 'personal' ? 'Search people…' : 'Search departments…'
 
-  const grouped = useMemo(() => {
-    const dept: Conversation[] = []
-    const direct: Conversation[] = []
-    const custom: Conversation[] = []
-    for (const c of conversations) {
-      if (c.isDepartmentChannel) dept.push(c)
-      else if (c.type === 'direct') direct.push(c)
-      else custom.push(c)
-    }
-    return { dept, direct, custom }
-  }, [conversations])
+  const emptyCopy =
+    filter === 'personal'
+      ? {
+          title: grouped.direct.length === 0 ? 'No personal chats yet' : 'No matches',
+          description:
+            grouped.direct.length === 0
+              ? 'Use New to message a colleague.'
+              : 'Try another name or message.',
+        }
+      : {
+          title: grouped.dept.length === 0 ? 'No department chats' : 'No matches',
+          description:
+            grouped.dept.length === 0
+              ? 'Department channels appear when you belong to a department.'
+              : 'Try another search.',
+        }
 
   if (!profile) return null
-
-  const people =
-    users.length > 0 ? users : [...usersById.values()].filter((u) => u.isActive)
 
   return (
     <div className={cn('flex h-full min-h-0 flex-col border-[var(--color-border)] bg-[var(--color-card)]', className)}>
       <div className="shrink-0 space-y-2 border-b border-[var(--color-border)] p-3">
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-[var(--color-muted-foreground)]" />
+        <InboxFilterTabs
+          value={filter}
+          onChange={setFilter}
+          departmentCount={grouped.dept.length}
+        />
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="relative min-w-0 flex-1">
+            <Search className="absolute left-2.5 top-3 h-4 w-4 text-[var(--color-muted-foreground)]" />
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search chats…"
-              className="h-9 pl-8 text-sm"
+              placeholder={searchPlaceholder}
+              className="h-11 pl-8"
             />
           </div>
-          <Button type="button" size="sm" onClick={() => setShowNew((v) => !v)}>
-            {showNew ? 'Close' : 'New'}
+          <Button
+            type="button"
+            className="min-h-11 shrink-0 sm:h-9"
+            onClick={() => setShowNew((v) => !v)}
+          >
+            {showNew ? 'Close' : 'New chat'}
           </Button>
         </div>
         {hasMinRole(profile, 'admin') ? (
@@ -192,44 +150,20 @@ export function ConversationListPanel({ className }: { className?: string }) {
         ) : null}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {conversations.length === 0 ? (
+        {filteredChats.length === 0 ? (
           <div className="p-4">
-            <EmptyState
-              icon={MessageSquare}
-              title="No chats yet"
-              description="Department groups appear automatically. Start a personal or custom chat with New."
-            />
+            <EmptyState icon={MessageSquare} title={emptyCopy.title} description={emptyCopy.description} />
           </div>
         ) : (
-          <>
-            <Section
-              title="Department groups"
-              items={grouped.dept}
-              profile={profile}
-              usersById={usersById}
-              unreadById={unreadById}
-              activeId={activeId}
-              query={query}
+          filteredChats.map((c) => (
+            <ConversationRow
+              key={c.id}
+              convo={c}
+              label={conversationLabel(c, profile.id, usersById)}
+              unread={unreadById[c.id] ?? false}
+              active={c.id === activeId}
             />
-            <Section
-              title="Personal"
-              items={grouped.direct}
-              profile={profile}
-              usersById={usersById}
-              unreadById={unreadById}
-              activeId={activeId}
-              query={query}
-            />
-            <Section
-              title="Custom groups"
-              items={grouped.custom}
-              profile={profile}
-              usersById={usersById}
-              unreadById={unreadById}
-              activeId={activeId}
-              query={query}
-            />
-          </>
+          ))
         )}
       </div>
     </div>

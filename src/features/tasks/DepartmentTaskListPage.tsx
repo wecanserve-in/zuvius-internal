@@ -1,16 +1,18 @@
 import { format } from 'date-fns'
-import { Plus, CheckSquare } from 'lucide-react'
+import { CheckSquare } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { CreateWorkMenu } from '@/components/common/CreateWorkMenu'
 import { EmptyState } from '@/components/common/EmptyState'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useManagedDepartments } from '@/hooks/useManagedDepartments'
 import { canAssignTasks } from '@/lib/permissions'
+import { overdueTaskSurfaceClass, sortTasksForDisplay } from '@/lib/tasks/sortTasks'
+import { cn } from '@/lib/utils'
 import {
   isTaskDueToday,
   isTaskOverdue,
@@ -58,7 +60,7 @@ export function DepartmentTaskListPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return tasks.filter((t) => {
+    const list = tasks.filter((t) => {
       if (memberId && !t.assigneeIds.includes(memberId)) return false
       if (status === 'pending' && !isTaskPending(t)) return false
       if (status === 'completed' && t.status !== 'completed') return false
@@ -73,6 +75,7 @@ export function DepartmentTaskListPage() {
       }
       return true
     })
+    return sortTasksForDisplay(list)
   }, [tasks, search, memberId, status, priority, deadlineFilter])
 
   if (!profile || managedIds.length === 0) {
@@ -87,14 +90,7 @@ export function DepartmentTaskListPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-semibold">Department tasks</h2>
-        {canAssignTasks(profile) ? (
-          <Button asChild>
-            <Link to="/tasks/new">
-              <Plus className="h-4 w-4" />
-              New task
-            </Link>
-          </Button>
-        ) : null}
+        {canAssignTasks(profile) ? <CreateWorkMenu /> : null}
       </div>
 
       <Card>
@@ -172,7 +168,7 @@ export function DepartmentTaskListPage() {
       ) : (
         <div className="grid gap-3">
           {filtered.map((task) => (
-            <Card key={task.id}>
+            <Card key={task.id} className={cn('border', overdueTaskSurfaceClass(isTaskOverdue(task)))}>
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                 <div>
                   <CardTitle className="text-base">

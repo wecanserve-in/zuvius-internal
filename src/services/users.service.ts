@@ -15,7 +15,10 @@ import {
 } from 'firebase/firestore'
 import { db, firebaseConfig } from '@/lib/firebase/config'
 import { canChangeRole, canManageUsers, hasMinRole } from '@/lib/permissions'
-import { isEligibleForwardRecipient } from '@/lib/permissions/forwarding'
+import {
+  isEligibleForwardRecipient,
+  isEligibleTaskAssignee,
+} from '@/lib/permissions/forwarding'
 import {
   addDepartmentAdmin,
   getDepartmentChannelMemberIds,
@@ -89,9 +92,18 @@ export function subscribeUser(
 }
 
 export async function listActiveUsers(): Promise<AppUser[]> {
-  const q = query(usersCol, where('isActive', '==', true))
-  const snap = await getDocs(q)
-  return snap.docs.map((d) => mapUser(d.id, d.data()))
+  try {
+    const q = query(usersCol, where('isActive', '==', true))
+    const snap = await getDocs(q)
+    const fromQuery = snap.docs.map((d) => mapUser(d.id, d.data()))
+    if (fromQuery.length > 0) return fromQuery
+  } catch {
+    // Query may fail without an index; fall back to full list + client filter.
+  }
+  const snap = await getDocs(usersCol)
+  return snap.docs
+    .map((d) => mapUser(d.id, d.data()))
+    .filter((u) => u.isActive)
 }
 
 /** Everyone an employee can start a 1:1 with (company directory). */
@@ -157,22 +169,85 @@ async function mergeUsersFromDepartmentQuery(
   deptId: string,
   actor: AppUser,
   byId: Map<string, AppUser>,
+  eligible: (candidate: AppUser, actorId: string) => boolean,
 ): Promise<void> {
   const snap = await getDocs(
     query(usersCol, where('departmentIds', 'array-contains', deptId)),
   )
   for (const docSnap of snap.docs) {
     const u = mapUser(docSnap.id, docSnap.data())
-    if (isEligibleForwardRecipient(u, actor.id)) byId.set(u.id, u)
+    if (eligible(u, actor.id)) byId.set(u.id, u)
   }
 }
 
-/** Shared org directory for task create, assign, and forward pickers. */
+async function collectOrgColleagues(
+  actor: AppUser,
+  options?: { taskDepartmentId?: string },
+  eligible: (candidate: AppUser, actorId: string) => boolean = isEligibleTaskAssignee,
+): Promise<AppUser[]> {
+  const byId = new Map<string, AppUser>()
+  const depts = await listDepartments()
+  const deptIds = new Set<string>(depts.map((d) => d.id))
+  for (const id of actor.departmentIds) deptIds.add(id)
+  if (options?.taskDepartmentId) deptIds.add(options.taskDepartmentId)
+
+  const members = await listMembersForDepartmentIds([...deptIds])
+  for (const u of members) {
+    if (eligible(u, actor.id)) byId.set(u.id, u)
+  }
+
+  for (const deptId of deptIds) {
+    try {
+      await mergeUsersFromDepartmentQuery(deptId, actor, byId, eligible)
+    } catch {
+      // Query may fail until firestore list rules are deployed; memberIds/channel fallbacks above.
+    }
+  }
+
+  const assignmentPicker = eligible === isEligibleTaskAssignee
+
+  if (assignmentPicker) {
+    // Any active employee may assign org-wide; rules allow listing active users.
+    try {
+      const listed = await listActiveUsers()
+      for (const u of listed) {
+        if (eligible(u, actor.id)) byId.set(u.id, u)
+      }
+    } catch {
+      // Fall through to department / directory fallbacks.
+    }
+  } else if (hasMinRole(actor, 'admin')) {
+    try {
+      const listed = await listActiveUsers()
+      for (const u of listed) {
+        if (eligible(u, actor.id)) byId.set(u.id, u)
+      }
+    } catch {
+      // optional org-wide list
+    }
+  }
+
+  if (byId.size === 0) {
+    const ids = await collectOrgDirectoryUserIds(actor.id)
+    await loadUsersByIds(ids, byId)
+    for (const [id, u] of [...byId.entries()]) {
+      if (!eligible(u, actor.id)) byId.delete(id)
+    }
+  }
+
+  return sortByDisplayName([...byId.values()])
+}
+
+/** Organisation-wide colleagues for task create and assignment (includes Super Admin). */
 export async function listOrgTaskMemberCandidates(
   actor: AppUser,
   options?: { taskDepartmentId?: string },
 ): Promise<AppUser[]> {
-  return listForwardRecipientCandidates(actor, options)
+  const users = await collectOrgColleagues(actor, options, isEligibleTaskAssignee)
+  if (users.length > 0) return users
+  throw new Error(
+    'Unable to load colleagues for assignment. Ask an admin to open Team (syncs department rosters) or try again after signing out and back in.',
+  )
 }
 
 /**
@@ -183,46 +258,8 @@ export async function listForwardRecipientCandidates(
   actor: AppUser,
   options?: { taskDepartmentId?: string },
 ): Promise<AppUser[]> {
-  const byId = new Map<string, AppUser>()
-  const depts = await listDepartments()
-  const deptIds = new Set<string>(depts.map((d) => d.id))
-  for (const id of actor.departmentIds) deptIds.add(id)
-  if (options?.taskDepartmentId) deptIds.add(options.taskDepartmentId)
-
-  const members = await listMembersForDepartmentIds([...deptIds])
-  for (const u of members) {
-    if (isEligibleForwardRecipient(u, actor.id)) byId.set(u.id, u)
-  }
-
-  for (const deptId of deptIds) {
-    try {
-      await mergeUsersFromDepartmentQuery(deptId, actor, byId)
-    } catch {
-      // Query may fail until firestore list rules are deployed; memberIds/channel fallbacks above.
-    }
-  }
-
-  if (byId.size === 0) {
-    const ids = await collectOrgDirectoryUserIds(actor.id)
-    await loadUsersByIds(ids, byId)
-    for (const [id, u] of [...byId.entries()]) {
-      if (!isEligibleForwardRecipient(u, actor.id)) byId.delete(id)
-    }
-  }
-
-  if (hasMinRole(actor, 'admin')) {
-    try {
-      const listed = await listActiveUsers()
-      for (const u of listed) {
-        if (isEligibleForwardRecipient(u, actor.id)) byId.set(u.id, u)
-      }
-    } catch {
-      // optional org-wide list
-    }
-  }
-
-  if (byId.size > 0) return sortByDisplayName([...byId.values()])
-
+  const users = await collectOrgColleagues(actor, options, isEligibleForwardRecipient)
+  if (users.length > 0) return users
   throw new Error(
     'Unable to load colleagues for forwarding. Ask an admin to open Team (syncs department rosters) or try again after signing out and back in.',
   )

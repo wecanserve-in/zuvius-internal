@@ -37,7 +37,7 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="mx-auto w-full min-w-0 max-w-2xl space-y-4">
       <Card>
         <CardHeader>
           <CardTitle>Profile</CardTitle>

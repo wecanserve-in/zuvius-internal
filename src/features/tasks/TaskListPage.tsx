@@ -1,9 +1,9 @@
 import { format, isToday } from 'date-fns'
-import { Plus, CheckSquare } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { CheckSquare } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { CreateWorkMenu } from '@/components/common/CreateWorkMenu'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState } from '@/components/common/EmptyState'
 import { useAuth } from '@/features/auth/AuthContext'
@@ -11,6 +11,8 @@ import {
   canAssignTasks,
   canViewAllTasks,
 } from '@/lib/permissions'
+import { overdueTaskSurfaceClass, sortTasksForDisplay } from '@/lib/tasks/sortTasks'
+import { cn } from '@/lib/utils'
 import {
   isTaskOverdue,
   subscribeAllTasks,
@@ -60,19 +62,22 @@ export function TaskListPage({ mode }: { mode: TaskListMode }) {
     return subscribeMyTasks(profile.id, setTasks)
   }, [profile, mode])
 
-  const filtered = tasks.filter((t) => {
-    if (!profile) return false
-    if (mode === 'overdue') return isTaskOverdue(t)
-    if (mode === 'created') return t.createdBy === profile.id
-    if (mode === 'completed') return t.status === 'completed'
-    if (mode === 'pending') {
-      return t.status !== 'completed' && t.status !== 'cancelled'
-    }
-    if (mode === 'today') {
-      return t.deadlineAt ? isToday(t.deadlineAt.toDate()) : false
-    }
-    return true
-  })
+  const filtered = useMemo(() => {
+    const list = tasks.filter((t) => {
+      if (!profile) return false
+      if (mode === 'overdue') return isTaskOverdue(t)
+      if (mode === 'created') return t.createdBy === profile.id
+      if (mode === 'completed') return t.status === 'completed'
+      if (mode === 'pending') {
+        return t.status !== 'completed' && t.status !== 'cancelled'
+      }
+      if (mode === 'today') {
+        return t.deadlineAt ? isToday(t.deadlineAt.toDate()) : false
+      }
+      return true
+    })
+    return sortTasksForDisplay(list)
+  }, [tasks, mode, profile])
 
   const title = titles[mode]
 
@@ -80,14 +85,7 @@ export function TaskListPage({ mode }: { mode: TaskListMode }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xl font-semibold">{title}</h2>
-        {profile && canAssignTasks(profile) ? (
-          <Button asChild>
-            <Link to="/tasks/new">
-              <Plus className="h-4 w-4" />
-              New task
-            </Link>
-          </Button>
-        ) : null}
+        {profile && canAssignTasks(profile) ? <CreateWorkMenu /> : null}
       </div>
 
       {filtered.length === 0 ? (
@@ -99,7 +97,7 @@ export function TaskListPage({ mode }: { mode: TaskListMode }) {
       ) : (
         <div className="grid gap-3">
           {filtered.map((task) => (
-            <Card key={task.id}>
+            <Card key={task.id} className={cn('border', overdueTaskSurfaceClass(isTaskOverdue(task)))}>
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                 <div>
                   <CardTitle className="text-base">

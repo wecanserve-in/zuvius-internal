@@ -85,12 +85,28 @@ export interface Department {
   updatedAt?: Timestamp
 }
 
+export interface Project {
+  id: string
+  title: string
+  description: string
+  createdBy: string
+  departmentId?: string
+  deadlineAt?: Timestamp
+  /** Optional recovery marker when task creation partially failed. */
+  creationStatus?: 'complete' | 'partial'
+  taskCount?: number
+  createdAt?: Timestamp
+  updatedAt?: Timestamp
+}
+
 export interface Task {
   id: string
   title: string
   description: string
   createdBy: string
   departmentId?: string
+  /** When set, task belongs to a project (separate actionable record). */
+  projectId?: string
   assigneeIds: string[]
   /** First assignees at creation (unchanged by forwarding). */
   initialAssigneeIds?: string[]
@@ -101,7 +117,11 @@ export interface Task {
   requiresReview: boolean
   category?: string
   attachmentIds?: string[]
+  /** Stable R2 keys for attachment links (assignees + creator). */
+  attachmentMeta?: { uploadId: string; objectKey: string; fileName?: string }[]
   formerAssigneeIds?: string[]
+  /** Users who forwarded this task (forward actor ids). */
+  forwardedByIds?: string[]
   createdAt?: Timestamp
   updatedAt?: Timestamp
   completedAt?: Timestamp
@@ -134,6 +154,9 @@ export interface Conversation {
   memberIds: string[]
   departmentId?: string
   isDepartmentChannel?: boolean
+  /** Group chat tied to a task (all task participants). */
+  isTaskChannel?: boolean
+  taskId?: string
   createdBy: string
   lastMessage?: string
   lastMessageAt?: Timestamp

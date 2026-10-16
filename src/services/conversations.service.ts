@@ -43,6 +43,8 @@ function mapConversation(id: string, data: Record<string, unknown>): Conversatio
     memberIds: Array.isArray(data.memberIds) ? data.memberIds.map(String) : [],
     departmentId: data.departmentId ? String(data.departmentId) : undefined,
     isDepartmentChannel: data.isDepartmentChannel === true,
+    isTaskChannel: data.isTaskChannel === true,
+    taskId: data.taskId ? String(data.taskId) : undefined,
     createdBy: String(data.createdBy ?? ''),
     lastMessage: data.lastMessage ? String(data.lastMessage) : undefined,
     lastMessageAt: data.lastMessageAt as Conversation['lastMessageAt'],

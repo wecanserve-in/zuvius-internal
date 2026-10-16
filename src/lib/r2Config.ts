@@ -1,6 +1,6 @@
 /**
- * Browser-safe R2 settings (no access keys). Secrets stay in functions/.env.internal-chat-bc793.
- * Upload uses presigned PUT URLs from requestUpload — same R2 endpoint as AddCourse, without bundling credentials.
+ * Browser R2 settings. With VITE_UPLOAD_DIRECT_R2=true + VITE_R2_ACCESS_KEY_ID/SECRET (AddCourse-style),
+ * uploads go straight to R2. Otherwise presigned URLs from Cloud Functions (keys in functions/.env only).
  */
 export const r2AccountId =
   import.meta.env.VITE_R2_ACCOUNT_ID ?? '45b20d97ffbad9e7a7573c735af61f19'

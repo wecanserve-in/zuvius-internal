@@ -1,4 +1,4 @@
-import { ArrowLeft, Bell, ChevronDown, Menu, Moon, Sun } from 'lucide-react'
+import { ArrowLeft, Bell, ChevronDown, Menu, Moon, PanelLeft, Sun } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -10,10 +10,14 @@ export function Header({
   title,
   backTo,
   onMenuClick,
+  sidebarOpen,
+  onSidebarOpen,
 }: {
   title: string
   backTo?: string
   onMenuClick?: () => void
+  sidebarOpen?: boolean
+  onSidebarOpen?: () => void
 }) {
   const { profile, logout } = useAuth()
   const [unread, setUnread] = useState(0)
@@ -39,7 +43,7 @@ export function Header({
   }, [])
 
   return (
-    <header className="flex h-14 items-center gap-3 border-b border-[var(--color-border)] bg-[var(--color-card)] px-4 md:px-5">
+    <header className="sticky top-0 z-30 flex min-h-14 items-center gap-2 border-b border-[var(--color-border)] bg-[var(--color-card)]/85 px-3 pt-[env(safe-area-inset-top)] backdrop-blur-md sm:gap-3 sm:px-4 md:px-5">
       {onMenuClick ? (
         <Button
           type="button"
@@ -52,6 +56,18 @@ export function Header({
           <Menu className="h-5 w-5" />
         </Button>
       ) : null}
+      {onSidebarOpen && sidebarOpen === false ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="hidden shrink-0 md:inline-flex"
+          aria-label="Open sidebar"
+          onClick={onSidebarOpen}
+        >
+          <PanelLeft className="h-5 w-5" />
+        </Button>
+      ) : null}
       {backTo ? (
         <Link to={backTo} aria-label="Back">
           <Button variant="ghost" size="icon" className="shrink-0">
@@ -59,12 +75,12 @@ export function Header({
           </Button>
         </Link>
       ) : null}
-      <h1 className="min-w-0 truncate text-base font-semibold">{title}</h1>
+      <h1 className="min-w-0 flex-1 truncate text-sm font-semibold sm:text-base">{title}</h1>
       <div className="ml-auto flex items-center gap-1">
         <Button variant="ghost" size="icon" onClick={() => setDark((d) => !d)} aria-label="Toggle theme">
           {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
-        <Link to="/notifications" className="relative">
+        <Link to="/notifications" className="relative hidden md:inline-flex">
           <Button variant="ghost" size="icon" aria-label="Notifications">
             <Bell className="h-4 w-4" />
           </Button>
@@ -84,7 +100,7 @@ export function Header({
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-primary)] text-xs font-semibold text-white">
                 {profile.displayName.charAt(0)}
               </span>
-              <span className="hidden max-w-[8rem] truncate font-medium sm:inline">
+              <span className="hidden max-w-[6rem] truncate font-medium md:inline lg:max-w-[8rem]">
                 {profile.displayName}
               </span>
               <ChevronDown className="h-4 w-4 text-[var(--color-muted-foreground)]" />

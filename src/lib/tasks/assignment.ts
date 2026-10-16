@@ -1,7 +1,7 @@
 import { canAssignTaskToUser } from '@/lib/permissions'
 import type { AppUser } from '@/types'
 
-/** Active users eligible for assignment in a department (excludes org admins). */
+/** Active users eligible for assignment in a department (includes org admins). */
 export function filterEligibleAssignees(
   users: AppUser[],
   departmentId: string,
@@ -64,4 +64,19 @@ export function resolveTaskDepartmentId(
     )
   }
   return candidates[0]
+}
+
+/** Department for persistence when assignees include org admins without a department. */
+export function resolveTaskDepartmentForAssignees(
+  assignees: AppUser[],
+  actor: AppUser,
+  fallbackDepartmentIds: string[],
+): string {
+  const fromAssignee = assignees.find((u) => u.departmentIds.length > 0)?.departmentIds[0]
+  if (fromAssignee) return fromAssignee
+  const fromActor = actor.departmentIds[0]
+  if (fromActor) return fromActor
+  const fallback = fallbackDepartmentIds[0]
+  if (fallback) return fallback
+  throw new Error('Could not determine task department')
 }

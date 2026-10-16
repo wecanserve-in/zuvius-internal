@@ -1,22 +1,17 @@
 import { formatDistanceToNow } from 'date-fns'
 import { MessageSquare } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/common/EmptyState'
+import { InboxFilterTabs, type InboxFilter } from '@/features/messaging/InboxFilterTabs'
 import { NewConversationPanel } from '@/features/messaging/NewConversationPanel'
+import { useMessagingInbox } from '@/features/messaging/useMessagingInbox'
 import { useAuth } from '@/features/auth/AuthContext'
 import { hasMinRole } from '@/lib/permissions'
-import { listDepartments } from '@/services/departments.service'
-import {
-  conversationLabel,
-  ensureDepartmentChannels,
-  getMyLastReadMs,
-  subscribeInbox,
-} from '@/services/conversations.service'
-import { listUsersForMessaging, loadUsersByIds } from '@/services/users.service'
-import type { AppUser, Conversation, Department } from '@/types'
+import { conversationLabel } from '@/services/conversations.service'
+import type { Conversation } from '@/types'
 
 function ConversationRow({
   convo,
@@ -52,91 +47,17 @@ function ConversationRow({
   )
 }
 
-function Section({
-  title,
-  items,
-  profile,
-  usersById,
-  unreadById,
-}: {
-  title: string
-  items: Conversation[]
-  profile: AppUser
-  usersById: Map<string, AppUser>
-  unreadById: Record<string, boolean>
-}) {
-  if (items.length === 0) return null
-  return (
-    <section className="space-y-2">
-      <h3 className="text-sm font-medium text-[var(--color-muted-foreground)]">{title}</h3>
-      {items.map((c) => (
-        <ConversationRow
-          key={c.id}
-          convo={c}
-          label={conversationLabel(c, profile.id, usersById)}
-          unread={unreadById[c.id] ?? false}
-        />
-      ))}
-    </section>
-  )
-}
-
 export function MessagesInboxPage() {
   const { profile } = useAuth()
-  const [conversations, setConversations] = useState<Conversation[]>([])
-  const [users, setUsers] = useState<AppUser[]>([])
-  const [usersById, setUsersById] = useState<Map<string, AppUser>>(new Map())
-  const [departments, setDepartments] = useState<Department[]>([])
   const [showNew, setShowNew] = useState(false)
-  const [unreadById, setUnreadById] = useState<Record<string, boolean>>({})
+  const [filter, setFilter] = useState<InboxFilter>('personal')
+  const { conversations, grouped, usersById, departments, people, unreadById } = useMessagingInbox(profile)
 
-  useEffect(() => {
-    if (!profile) return
-    void listUsersForMessaging().then(setUsers)
-    void listDepartments().then(setDepartments)
-    return subscribeInbox(profile, setConversations)
-  }, [profile])
-
-  useEffect(() => {
-    const base = new Map(users.map((u) => [u.id, u]))
-    const ids = conversations.flatMap((c) => c.memberIds)
-    void loadUsersByIds(ids, base).then(setUsersById)
-  }, [users, conversations])
-
-  useEffect(() => {
-    if (!profile || departments.length === 0) return
-    void ensureDepartmentChannels(profile, departments)
-  }, [profile, departments])
-
-  useEffect(() => {
-    if (!profile || conversations.length === 0) return
-    void (async () => {
-      const next: Record<string, boolean> = {}
-      for (const c of conversations) {
-        if (!c.lastMessageAt) continue
-        const readMs = await getMyLastReadMs(c.id, profile.id)
-        next[c.id] = c.lastMessageAt.toMillis() > readMs
-      }
-      setUnreadById(next)
-    })()
-  }, [profile, conversations])
-
-  const grouped = useMemo(() => {
-    const dept: Conversation[] = []
-    const direct: Conversation[] = []
-    const custom: Conversation[] = []
-    for (const c of conversations) {
-      if (c.isDepartmentChannel) dept.push(c)
-      else if (c.type === 'direct') direct.push(c)
-      else custom.push(c)
-    }
-    return { dept, direct, custom }
-  }, [conversations])
+  const list = useMemo(() => {
+    return filter === 'personal' ? grouped.direct : grouped.dept
+  }, [filter, grouped])
 
   if (!profile) return null
-
-  const people =
-    users.length > 0 ? users : [...usersById.values()].filter((u) => u.isActive)
 
   return (
     <div className="space-y-4">
@@ -154,6 +75,12 @@ export function MessagesInboxPage() {
         </Button>
       </div>
 
+      <InboxFilterTabs
+        value={filter}
+        onChange={setFilter}
+        departmentCount={grouped.dept.length}
+      />
+
       {showNew ? (
         <NewConversationPanel users={people} departments={departments} onClose={() => setShowNew(false)} />
       ) : null}
@@ -162,31 +89,20 @@ export function MessagesInboxPage() {
         <EmptyState
           icon={MessageSquare}
           title="No chats yet"
-          description="Department groups appear automatically. Use New message for a colleague or a custom group."
+          description="Use New message or switch to Department when channels are ready."
         />
+      ) : list.length === 0 ? (
+        <p className="text-sm text-[var(--color-muted-foreground)]">Nothing in this tab yet.</p>
       ) : (
-        <div className="space-y-6">
-          <Section
-            title="Department groups"
-            items={grouped.dept}
-            profile={profile}
-            usersById={usersById}
-            unreadById={unreadById}
-          />
-          <Section
-            title="Personal"
-            items={grouped.direct}
-            profile={profile}
-            usersById={usersById}
-            unreadById={unreadById}
-          />
-          <Section
-            title="Custom groups"
-            items={grouped.custom}
-            profile={profile}
-            usersById={usersById}
-            unreadById={unreadById}
-          />
+        <div className="overflow-hidden rounded-md border border-[var(--color-border)]">
+          {list.map((c) => (
+            <ConversationRow
+              key={c.id}
+              convo={c}
+              label={conversationLabel(c, profile.id, usersById)}
+              unread={unreadById[c.id] ?? false}
+            />
+          ))}
         </div>
       )}
     </div>

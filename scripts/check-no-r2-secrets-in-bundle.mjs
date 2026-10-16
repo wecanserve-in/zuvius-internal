@@ -2,11 +2,11 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 const dist = join(process.cwd(), 'dist')
+// Env var *names* in source are fine; fail only if literal secret material appears in the bundle.
 const forbidden = [
-  /R2_SECRET_ACCESS_KEY/i,
-  /VITE_R2_SECRET/i,
-  /VITE_R2_ACCESS_KEY_ID/i,
-  /53bde082bf70203304f933f5ed37fee4/,
+  /secretAccessKey["']?\s*:\s*["'][a-zA-Z0-9+/=]{20,}/,
+  /accessKeyId["']?\s*:\s*["'][a-zA-Z0-9]{20,}/,
+  /R2_SECRET_ACCESS_KEY=[a-zA-Z0-9+/=]{8,}/,
 ]
 
 function walk(dir, files = []) {

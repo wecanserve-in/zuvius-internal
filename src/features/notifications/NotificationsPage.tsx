@@ -87,7 +87,7 @@ export function NotificationsPage() {
   const loading = items === null && !error
 
   return (
-    <div className="mx-auto max-w-3xl space-y-3">
+    <div className="mx-auto w-full min-w-0 max-w-3xl space-y-3">
       <PageHeader
         compact
         title="Notifications"

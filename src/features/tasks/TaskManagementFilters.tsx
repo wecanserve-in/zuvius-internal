@@ -11,6 +11,7 @@ export interface TaskListFilters {
   priority: string
   creatorId: string
   assigneeId: string
+  projectFilter: '' | 'any' | 'none'
   query: string
 }
 
@@ -20,6 +21,7 @@ export const emptyTaskFilters: TaskListFilters = {
   priority: '',
   creatorId: '',
   assigneeId: '',
+  projectFilter: '',
   query: '',
 }
 
@@ -27,7 +29,7 @@ const statuses: TaskStatus[] = ['todo', 'in_progress', 'completed', 'needs_revis
 const priorities: TaskPriority[] = ['low', 'medium', 'high', 'urgent']
 
 const selectClass =
-  'h-8 max-w-[10rem] rounded-md border border-[var(--color-input)] bg-[var(--color-card)] px-2 text-xs'
+  'h-8 w-full min-w-0 flex-1 rounded-md border border-[var(--color-input)] bg-[var(--color-card)] px-2 text-xs sm:max-w-[10rem] sm:flex-none sm:w-auto'
 
 export function filtersAreActive(filters: TaskListFilters): boolean {
   return Boolean(
@@ -36,6 +38,7 @@ export function filtersAreActive(filters: TaskListFilters): boolean {
       filters.priority ||
       filters.creatorId ||
       filters.assigneeId ||
+      filters.projectFilter ||
       filters.query.trim(),
   )
 }
@@ -57,13 +60,13 @@ export function TaskManagementFilters({
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         <Input
           id="task-search"
           value={filters.query}
           onChange={(e) => set({ query: e.target.value })}
           placeholder="Search tasks…"
-          className="h-8 w-full min-w-[10rem] max-w-xs text-sm"
+          className="h-8 w-full min-w-0 text-sm sm:max-w-xs sm:flex-1"
           aria-label="Search tasks"
         />
         <select
@@ -143,6 +146,19 @@ export function TaskManagementFilters({
             </select>
           </div>
           <div className="space-y-1">
+            <Label htmlFor="filter-project" className="text-xs">Project</Label>
+            <select
+              id="filter-project"
+              className={selectClass}
+              value={filters.projectFilter}
+              onChange={(e) => set({ projectFilter: e.target.value as TaskListFilters['projectFilter'] })}
+            >
+              <option value="">All tasks</option>
+              <option value="any">In a project</option>
+              <option value="none">Not in a project</option>
+            </select>
+          </div>
+          <div className="space-y-1">
             <Label htmlFor="filter-assignee" className="text-xs">Current assignee</Label>
             <select
               id="filter-assignee"
@@ -170,6 +186,8 @@ export function applyTaskListFilters(tasks: Task[], filters: TaskListFilters): T
     if (filters.priority && t.priority !== filters.priority) return false
     if (filters.creatorId && t.createdBy !== filters.creatorId) return false
     if (filters.assigneeId && !t.assigneeIds.includes(filters.assigneeId)) return false
+    if (filters.projectFilter === 'any' && !t.projectId) return false
+    if (filters.projectFilter === 'none' && t.projectId) return false
     if (q) {
       const hay = `${t.title} ${t.description}`.toLowerCase()
       if (!hay.includes(q)) return false

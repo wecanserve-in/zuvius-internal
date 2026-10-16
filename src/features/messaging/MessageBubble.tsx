@@ -117,12 +117,16 @@ export function MessageBubble({
             <img
               src={attachmentUrl}
               alt={message.attachment?.fileName ?? 'Image'}
-              className="max-h-64 max-w-full rounded-md object-contain"
+              className="max-h-[min(16rem,40vh)] w-full max-w-full rounded-md object-contain"
             />
           </a>
         ) : null}
         {message.type === 'video' && attachmentUrl ? (
-          <video controls src={attachmentUrl} className="max-h-64 max-w-full rounded-md" />
+          <video
+            controls
+            src={attachmentUrl}
+            className="max-h-[min(16rem,40vh)] w-full max-w-full rounded-md object-contain"
+          />
         ) : null}
         {message.type === 'file' && message.attachment && attachmentUrl ? (
           <a

@@ -57,14 +57,83 @@ export function canViewDepartmentTasks(user: AppUser | null | undefined): boolea
   return isDepartmentAdminOnly(user)
 }
 
-/** Assignee eligible for department-admin task assignment (active member in dept, not org admin). */
+/** Active colleague eligible for task assignment (org-wide; includes org admins). */
 export function canAssignTaskToUser(
   assignee: AppUser,
   departmentId: string,
 ): boolean {
   if (!assignee.isActive) return false
-  if (assignee.role === 'admin' || assignee.role === 'super_admin') return false
+  if (assignee.role === 'admin' || assignee.role === 'super_admin') return true
   return assignee.departmentIds.includes(departmentId)
+}
+
+/** Tasks hub Overview tab (not shown to plain members). */
+export function canViewTasksOverview(user: AppUser | null | undefined): boolean {
+  if (!user?.isActive) return false
+  if (user.role === 'member') return false
+  return hasMinRole(user, 'department_admin')
+}
+
+export function canAccessProject(
+  user: AppUser | null | undefined,
+  project: { createdBy: string; departmentId?: string },
+  options?: { assignedToProjectTask?: boolean },
+): boolean {
+  if (!user?.isActive) return false
+  if (hasMinRole(user, 'admin')) return true
+  if (project.createdBy === user.id) return true
+  if (
+    project.departmentId &&
+    user.role === 'department_admin' &&
+    user.departmentIds.includes(project.departmentId)
+  ) {
+    return true
+  }
+  if (options?.assignedToProjectTask) return true
+  return false
+}
+
+export function userAssignedToProjectTasks(
+  userId: string,
+  projectId: string,
+  tasks: { projectId?: string; assigneeIds: string[] }[],
+): boolean {
+  return tasks.some(
+    (t) => t.projectId === projectId && t.assigneeIds.includes(userId),
+  )
+}
+
+/** Who may append new tasks to an existing project (not assignee-only viewers). */
+export function canAddTasksToProject(
+  user: AppUser | null | undefined,
+  project: { createdBy: string; departmentId?: string },
+  tasks: { createdBy: string }[] = [],
+): boolean {
+  if (!canCreateTasks(user) || !user) return false
+  if (hasMinRole(user, 'admin')) return true
+  if (project.createdBy === user.id) return true
+  if (
+    project.departmentId &&
+    user.role === 'department_admin' &&
+    user.departmentIds.includes(project.departmentId)
+  ) {
+    return true
+  }
+  if (user.role === 'member' && tasks.some((t) => t.createdBy === user.id)) {
+    return true
+  }
+  return false
+}
+
+/** Member who created the project (or its tasks) sees full project progress, not assignee-only. */
+export function isMemberProjectOwner(
+  user: AppUser | null | undefined,
+  project: { createdBy: string },
+  tasks: { createdBy: string }[] = [],
+): boolean {
+  if (!user?.isActive || user.role !== 'member') return false
+  if (project.createdBy === user.id) return true
+  return tasks.some((t) => t.createdBy === user.id)
 }
 
 export function canViewDepartmentMember(

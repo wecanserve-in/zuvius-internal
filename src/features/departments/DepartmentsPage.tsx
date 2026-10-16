@@ -1,10 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
+import { PageHeaderAction } from '@/components/common/PageHeaderAction'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { DepartmentMobileList } from '@/components/departments/DepartmentMobileList'
 import {
   Table,
   TableBody,
@@ -37,7 +46,7 @@ export function DepartmentsPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [users, setUsers] = useState<AppUser[]>([])
-  const [showCreate, setShowCreate] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
   const [search, setSearch] = useState('')
 
   useEffect(() => subscribeDepartments(setDepartments), [])
@@ -95,7 +104,7 @@ export function DepartmentsPage() {
       })
       setName('')
       setDescription('')
-      setShowCreate(false)
+      setCreateOpen(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create department')
     } finally {
@@ -104,57 +113,94 @@ export function DepartmentsPage() {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="min-w-0 space-y-3">
       <PageHeader
         compact
         title="Departments"
         description="Organization structure and department groups"
         action={
-          <Button type="button" size="sm" onClick={() => setShowCreate((v) => !v)}>
-            {showCreate ? 'Cancel' : 'Add department'}
-          </Button>
+          <PageHeaderAction label="Add department" onClick={() => setCreateOpen(true)} />
         }
       />
 
-      {showCreate ? (
-        <form
-          onSubmit={handleCreate}
-          className="max-w-lg space-y-3 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] p-4"
-        >
-          <div className="space-y-2">
-            <Label htmlFor="dept-name">Name</Label>
-            <Input
-              id="dept-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Quality Assurance"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="dept-desc">Description (optional)</Label>
-            <Textarea
-              id="dept-desc"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={2}
-            />
-          </div>
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
-          <Button type="submit" size="sm" disabled={saving}>
-            {saving ? 'Creating…' : 'Create department'}
-          </Button>
-        </form>
-      ) : null}
+      <Dialog
+        open={createOpen}
+        onOpenChange={(open) => {
+          setCreateOpen(open)
+          if (!open) {
+            setName('')
+            setDescription('')
+            setError(null)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add department</DialogTitle>
+            <DialogDescription>
+              Create a department for grouping people and tasks.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="dept-name">Name</Label>
+              <Input
+                id="dept-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Quality Assurance"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dept-desc">Description (optional)</Label>
+              <Textarea
+                id="dept-desc"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={2}
+              />
+            </div>
+            {error ? <p className="text-sm text-red-600">{error}</p> : null}
+            <div className="flex justify-end gap-2 pt-1">
+              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" disabled={saving}>
+                {saving ? 'Creating…' : 'Create department'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Input
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search departments…"
-        className="max-w-sm"
+        className="w-full sm:max-w-sm"
       />
 
-      <Table>
+      <DepartmentMobileList
+        departments={filteredDepartments}
+        users={users}
+        membersByDepartment={membersByDepartment}
+        openTasksByDepartment={openTasksByDepartment}
+        openingChatDeptId={openingChatDeptId}
+        resolveAdmins={resolveDepartmentAdmins}
+        onOpenChat={(d) => {
+          if (!profile) return
+          setOpeningChatDeptId(d.id)
+          void provisionDepartmentChannel(profile, d)
+            .then((conversationId) => navigate(`/messages/${conversationId}`))
+            .catch((err) => {
+              setError(err instanceof Error ? err.message : 'Could not open department chat')
+            })
+            .finally(() => setOpeningChatDeptId(null))
+        }}
+      />
+
+      <Table className="hidden md:table">
         <TableHeader>
           <TableRow>
             <TableHead>Department</TableHead>

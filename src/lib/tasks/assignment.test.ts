@@ -16,7 +16,7 @@ const user = (overrides: Partial<AppUser>): AppUser => ({
 })
 
 describe('task assignment helpers', () => {
-  it('excludes org admins from eligible assignees', () => {
+  it('includes org admins and excludes inactive users', () => {
     const members = [
       user({ id: 'm1', role: 'member' }),
       user({ id: 'a1', role: 'admin' }),
@@ -24,7 +24,7 @@ describe('task assignment helpers', () => {
       user({ id: 'i1', isActive: false }),
     ]
     const eligible = filterEligibleAssignees(members, 'd1')
-    expect(eligible.map((u) => u.id)).toEqual(['m1'])
+    expect(eligible.map((u) => u.id).sort()).toEqual(['a1', 'm1', 's1'])
   })
 
   it('uses single managed department automatically', () => {

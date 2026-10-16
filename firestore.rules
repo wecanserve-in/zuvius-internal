@@ -135,6 +135,20 @@ service cloud.firestore {
     }
 
     match /conversations/{conversationId} {
+      function taskLinkedReadable(taskId) {
+        return exists(/databases/$(database)/documents/tasks/$(taskId))
+          && (
+            isAdmin()
+            || get(/databases/$(database)/documents/tasks/$(taskId)).data.createdBy == request.auth.uid
+            || request.auth.uid in get(/databases/$(database)/documents/tasks/$(taskId)).data.assigneeIds
+            || (get(/databases/$(database)/documents/tasks/$(taskId)).data.keys().hasAny(['formerAssigneeIds'])
+              && get(/databases/$(database)/documents/tasks/$(taskId)).data.formerAssigneeIds.hasAny([request.auth.uid]))
+            || (hasMinRole('department_admin')
+              && get(/databases/$(database)/documents/tasks/$(taskId)).data.departmentId != null
+              && isDepartmentAdminFor(get(/databases/$(database)/documents/tasks/$(taskId)).data.departmentId))
+          );
+      }
+
       allow read: if isActiveUser() && (
         isAdmin()
         || request.auth.uid in resource.data.memberIds
@@ -154,6 +168,11 @@ service cloud.firestore {
             && request.resource.data.isDepartmentChannel == true
             && isAdmin()
             && request.resource.data.memberIds.size() >= 1)
+          || (request.resource.data.isTaskChannel == true
+            && request.resource.data.taskId is string
+            && taskLinkedReadable(request.resource.data.taskId)
+            && request.resource.data.type == 'group'
+            && request.resource.data.memberIds.size() >= 2)
           || (request.resource.data.memberIds.size() >= 2
             && (
               (request.resource.data.type == 'direct'
@@ -195,6 +214,15 @@ service cloud.firestore {
         && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
         && request.resource.data.diff(resource.data).changedKeys().hasOnly([
           'memberIds', 'updatedAt'
+        ]);
+
+      allow update: if isActiveUser()
+        && resource.data.isTaskChannel == true
+        && resource.data.taskId is string
+        && taskLinkedReadable(resource.data.taskId)
+        && request.auth.uid in request.resource.data.memberIds
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          'memberIds', 'updatedAt', 'title'
         ]);
 
       match /messages/{messageId} {
@@ -242,6 +270,8 @@ service cloud.firestore {
           request.auth.uid in resource.data.assigneeIds ||
           (resource.data.keys().hasAny(['formerAssigneeIds'])
             && resource.data.formerAssigneeIds.hasAny([request.auth.uid])) ||
+          (resource.data.keys().hasAny(['forwardedByIds'])
+            && resource.data.forwardedByIds.hasAny([request.auth.uid])) ||
           (hasMinRole('department_admin')
             && resource.data.departmentId != null
             && isDepartmentAdminFor(resource.data.departmentId))
@@ -259,6 +289,8 @@ service cloud.firestore {
           request.auth.uid in taskData().assigneeIds ||
           (taskData().keys().hasAny(['formerAssigneeIds'])
             && taskData().formerAssigneeIds.hasAny([request.auth.uid])) ||
+          (taskData().keys().hasAny(['forwardedByIds'])
+            && taskData().forwardedByIds.hasAny([request.auth.uid])) ||
           (hasMinRole('department_admin')
             && taskData().departmentId != null
             && isDepartmentAdminFor(taskData().departmentId))
@@ -282,10 +314,13 @@ service cloud.firestore {
       }
 
       function assigneeEligibleForDept(assigneeId, deptId) {
+        let profile = get(/databases/$(database)/documents/users/$(assigneeId)).data;
         return userProfileActive(assigneeId)
-          && get(/databases/$(database)/documents/users/$(assigneeId)).data.departmentIds.hasAny([deptId])
-          && get(/databases/$(database)/documents/users/$(assigneeId)).data.role != 'admin'
-          && get(/databases/$(database)/documents/users/$(assigneeId)).data.role != 'super_admin';
+          && (
+            profile.role == 'admin'
+            || profile.role == 'super_admin'
+            || profile.departmentIds.hasAny([deptId])
+          );
       }
 
       function assigneeEligibleForOrgHandover(assigneeId) {
@@ -367,7 +402,11 @@ service cloud.firestore {
         && request.resource.data.assigneeIds is list
         && request.resource.data.departmentId is string
         && request.resource.data.departmentId.size() > 0
-        && assigneesValidForOrgHandover(request.resource.data.assigneeIds);
+        && assigneesValidForOrgHandover(request.resource.data.assigneeIds)
+        && (
+          !request.resource.data.keys().hasAny(['projectId'])
+          || request.resource.data.projectId is string
+        );
 
       allow update: if isActiveUser() && canReadTask()
         && request.auth.uid in resource.data.assigneeIds
@@ -389,7 +428,7 @@ service cloud.firestore {
         && request.resource.data.assigneeIds.size() >= 1
         && assigneesValidForOrgHandover(request.resource.data.assigneeIds)
         && request.resource.data.diff(resource.data).changedKeys().hasOnly([
-          'assigneeIds', 'formerAssigneeIds', 'status', 'updatedAt'
+          'assigneeIds', 'formerAssigneeIds', 'forwardedByIds', 'status', 'updatedAt'
         ]);
 
       allow delete: if canDeleteTaskDoc();
@@ -406,9 +445,9 @@ service cloud.firestore {
             request.resource.data.departmentId,
             request.resource.data.assigneeIds))
         && request.resource.data.diff(resource.data).changedKeys().hasOnly([
-          'title', 'description', 'departmentId', 'assigneeIds', 'priority', 'status',
+          'title', 'description', 'departmentId', 'projectId', 'assigneeIds', 'priority', 'status',
           'deadlineAt', 'startAt', 'requiresReview', 'category', 'attachmentIds',
-          'formerAssigneeIds', 'updatedAt', 'completedAt', 'completionNotes'
+          'formerAssigneeIds', 'forwardedByIds', 'updatedAt', 'completedAt', 'completionNotes'
         ]);
 
       match /history/{eventId} {
@@ -488,6 +527,71 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /projects/{projectId} {
+      function isProjectParticipant() {
+        return exists(/databases/$(database)/documents/projects/$(projectId)/participants/$(request.auth.uid));
+      }
+
+      function canReadProject() {
+        return isActiveUser() && (
+          isAdmin()
+          || resource.data.createdBy == request.auth.uid
+          || (hasMinRole('department_admin')
+            && resource.data.departmentId != null
+            && isDepartmentAdminFor(resource.data.departmentId))
+          || isProjectParticipant()
+        );
+      }
+
+      match /participants/{userId} {
+        function participantTaskId() {
+          return request.resource.data.taskId;
+        }
+
+        function participantTaskData() {
+          return get(/databases/$(database)/documents/tasks/$(participantTaskId())).data;
+        }
+
+        function canLinkProjectParticipant() {
+          return isActiveUser()
+            && request.resource.data.taskId is string
+            && exists(/databases/$(database)/documents/tasks/$(participantTaskId())/assignees/$(userId))
+            && participantTaskData().projectId == projectId
+            && (
+              request.auth.uid == userId
+              || participantTaskData().createdBy == request.auth.uid
+              || get(/databases/$(database)/documents/projects/$(projectId)).data.createdBy == request.auth.uid
+              || isAdmin()
+            );
+        }
+
+        allow read: if isActiveUser() && (
+          request.auth.uid == userId
+          || isAdmin()
+          || get(/databases/$(database)/documents/projects/$(projectId)).data.createdBy == request.auth.uid
+        );
+        allow create: if canLinkProjectParticipant();
+        allow update, delete: if false;
+      }
+
+      allow read: if canReadProject();
+
+      allow create: if isActiveUser()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if isActiveUser() && canReadProject()
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          'title', 'description', 'departmentId', 'deadlineAt', 'taskCount',
+          'creationStatus', 'updatedAt'
+        ]);
+
+      allow delete: if isActiveUser()
+        && (resource.data.createdBy == request.auth.uid || isAdmin());
+    }
+
     match /activityLogs/{logId} {
       allow read: if isActiveUser() && hasMinRole('department_admin');
       allow write: if false;
@@ -497,7 +601,19 @@ service cloud.firestore {
       allow read: if isActiveUser() && (
         resource.data.ownerId == request.auth.uid || isAdmin()
       );
-      allow write: if false;
+      allow create: if isActiveUser()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.objectKey is string
+        && request.resource.data.contentType is string
+        && request.resource.data.size is number
+        && request.resource.data.fileName is string
+        && request.resource.data.relatedEntityType is string
+        && request.resource.data.relatedEntityId is string;
+      allow update: if isActiveUser()
+        && resource.data.ownerId == request.auth.uid
+        && resource.data.status == 'pending'
+        && request.resource.data.status == 'completed';
     }
 
     match /reminderEvents/{eventId} {

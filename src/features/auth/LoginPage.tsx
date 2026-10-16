@@ -45,13 +45,15 @@ export function LoginPage() {
   })
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--color-background)] p-4">
+    <div className="flex min-h-[100dvh] items-center justify-center bg-[var(--color-background)] p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-secondary)] text-lg font-bold text-[var(--color-primary)]">
-            Z
-          </div>
-          <CardTitle>Zuvius Internal</CardTitle>
+          <img
+            src="/zuvius-logo.png"
+            alt="Zuvius Lifesciences"
+            className="mx-auto mb-3 h-14 w-auto max-w-[220px] object-contain"
+          />
+          <CardTitle className="text-[var(--color-foreground)]">Internal workspace</CardTitle>
           <CardDescription>Sign in with your company account</CardDescription>
         </CardHeader>
         <CardContent>

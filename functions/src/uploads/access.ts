@@ -31,7 +31,14 @@ export async function assertTaskMediaAccess(uid: string, taskId: string) {
   if (!user) throw new HttpsError('permission-denied', 'Inactive user')
   const role = (user.role as UserRole) ?? 'member'
 
-  const taskSnap = await admin.firestore().doc(`tasks/${taskId}`).get()
+  let taskSnap = await admin.firestore().doc(`tasks/${taskId}`).get()
+  if (!taskSnap.exists) {
+    for (let i = 0; i < 4; i++) {
+      await new Promise((r) => setTimeout(r, 120 * (i + 1)))
+      taskSnap = await admin.firestore().doc(`tasks/${taskId}`).get()
+      if (taskSnap.exists) break
+    }
+  }
   if (!taskSnap.exists) throw new HttpsError('not-found', 'Task not found')
   const task = taskSnap.data()!
   const assigneeIds = (task.assigneeIds ?? []) as string[]

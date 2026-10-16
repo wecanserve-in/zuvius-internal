@@ -57,14 +57,16 @@ export function MobileNav({
         aria-label="Close menu"
         onClick={onClose}
       />
-      <aside className="relative flex h-full w-64 max-w-[85vw] flex-col bg-[var(--color-card)] shadow-lg">
-        <div className="flex h-14 items-center justify-between border-b border-[var(--color-border)] px-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-primary)] text-xs font-bold text-white">
-              Z
-            </div>
-            <span className="text-sm font-semibold">Zuvius Internal</span>
-          </div>
+      <aside
+        className="relative flex h-full w-[min(18rem,88vw)] max-w-[88vw] flex-col bg-[var(--color-card)] shadow-xl"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        <div className="flex h-14 items-center justify-between border-b border-[var(--color-border)] px-4 pt-[env(safe-area-inset-top)]">
+          <img
+            src="/zuvius-logo.png"
+            alt="Zuvius Lifesciences"
+            className="h-8 w-auto max-w-[9rem] object-contain object-left"
+          />
           <button type="button" onClick={onClose} aria-label="Close" className="rounded-md p-2 hover:bg-[var(--color-muted)]">
             <X className="h-5 w-5" />
           </button>
@@ -81,7 +83,7 @@ export function MobileNav({
                 onClick={onClose}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium',
+                    'flex min-h-11 items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium',
                     isActive
                       ? 'bg-[var(--color-secondary)] text-[var(--color-primary)]'
                       : 'text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]',

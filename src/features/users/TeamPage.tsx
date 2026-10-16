@@ -1,9 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
+import { PageHeaderAction } from '@/components/common/PageHeaderAction'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { TeamMobileList } from '@/components/users/TeamMobileList'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useAuth } from '@/features/auth/AuthContext'
 import { canManageUsers, formatUserRole } from '@/lib/permissions'
@@ -33,7 +42,7 @@ export function TeamPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [search, setSearch] = useState('')
-  const [showForm, setShowForm] = useState(false)
+  const [formOpen, setFormOpen] = useState(false)
 
   const deptName = (id: string) => departments.find((d) => d.id === id)?.name ?? '—'
 
@@ -69,6 +78,15 @@ export function TeamPage() {
     return <Navigate to="/" replace />
   }
 
+  const resetForm = () => {
+    setDisplayName('')
+    setEmail('')
+    setPassword('')
+    setRole('member')
+    setDepartmentId('')
+    setError(null)
+  }
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -89,11 +107,8 @@ export function TeamPage() {
       const names = new Map(departments.map((d) => [d.id, d.name]))
       await syncUserDepartmentChannels(profile, departmentIds, names)
       setSuccess(`${displayName} was created. They can sign in with the email and password you set.`)
-      setDisplayName('')
-      setEmail('')
-      setPassword('')
-      setRole('member')
-      setDepartmentId('')
+      resetForm()
+      setFormOpen(false)
       refreshUsers()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create employee')
@@ -103,23 +118,33 @@ export function TeamPage() {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="min-w-0 space-y-3">
       <PageHeader
         compact
         title="Team"
         description="Employees and access"
         action={
-          <Button size="sm" onClick={() => setShowForm((s) => !s)}>
-            {showForm ? 'Close form' : 'Create employee'}
-          </Button>
+          <PageHeaderAction label="Create employee" onClick={() => setFormOpen(true)} />
         }
       />
 
-      {showForm ? (
-        <form
-          onSubmit={handleCreate}
-          className="max-w-xl space-y-3 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] p-4"
-        >
+      <Dialog
+        open={formOpen}
+        onOpenChange={(open) => {
+          setFormOpen(open)
+          if (!open) {
+            resetForm()
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create employee</DialogTitle>
+            <DialogDescription>
+              Add a colleague with email, password, role, and department.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="space-y-3">
             <div className="space-y-2">
               <Label>Full name</Label>
               <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
@@ -174,23 +199,31 @@ export function TeamPage() {
               </select>
             </div>
             {error ? <p className="text-sm text-red-600">{error}</p> : null}
-            {success ? <p className="text-sm text-green-700">{success}</p> : null}
-          <Button type="submit" disabled={saving}>
-            {saving ? 'Creating…' : 'Save employee'}
-          </Button>
-        </form>
-      ) : null}
+            <div className="flex justify-end gap-2 pt-1">
+              <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? 'Creating…' : 'Save employee'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
+      {success ? <p className="text-sm text-green-700">{success}</p> : null}
       {listError ? <p className="text-sm text-red-600">{listError}</p> : null}
 
       <Input
         placeholder="Search employees…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="max-w-sm"
+        className="w-full sm:max-w-sm"
       />
 
-      <Table>
+      <TeamMobileList users={filteredUsers} deptName={deptName} />
+
+      <Table className="hidden md:table">
         <TableHeader>
           <TableRow>
             <TableHead>Employee</TableHead>

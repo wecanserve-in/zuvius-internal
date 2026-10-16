@@ -45,7 +45,7 @@ export function ProfilePage() {
   const completed = tasks.filter((t) => t.status === 'completed')
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="mx-auto w-full min-w-0 max-w-2xl space-y-4">
       <Card>
         <CardHeader>
           <CardTitle>{user.displayName}</CardTitle>

@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { actorHintFromBody, notificationDestination } from '@/lib/notifications/inbox'
+import { notificationAction } from '@/lib/notifications/notificationCta'
 import {
   markNotificationRead,
   markNotificationUnread,
@@ -44,6 +45,7 @@ export function NotificationRow({
   const menuRef = useRef<HTMLDivElement>(null)
   const unread = !notification.readAt
   const dest = notificationDestination(notification)
+  const action = notificationAction(notification)
   const actor = actorHintFromBody(notification.body)
   const created = notification.createdAt?.toDate()
   const relative = created ? formatDistanceToNow(created, { addSuffix: true }) : ''
@@ -94,21 +96,34 @@ export function NotificationRow({
       <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-muted)]/50">
         <NotificationIcon type={notification.type} />
       </div>
-      <button
-        type="button"
-        disabled={!dest || busy}
-        onClick={() => void openDestination()}
-        className="min-w-0 flex-1 text-left disabled:cursor-default"
-      >
-        <p className={cn('text-sm leading-snug', unread && 'font-medium')}>{notification.title}</p>
-        <p className="mt-0.5 line-clamp-2 text-xs text-[var(--color-muted-foreground)]">
-          {notification.body}
-        </p>
-        <p className="mt-1 text-[10px] text-[var(--color-muted-foreground)]">
-          {actor ? <span>{actor} · </span> : null}
-          <time dateTime={created?.toISOString()} title={exact}>{relative}</time>
-        </p>
-      </button>
+      <div className="min-w-0 flex-1">
+        <button
+          type="button"
+          disabled={!dest || busy}
+          onClick={() => void openDestination()}
+          className="w-full text-left disabled:cursor-default"
+        >
+          <p className={cn('text-sm leading-snug', unread && 'font-medium')}>{notification.title}</p>
+          <p className="mt-0.5 line-clamp-2 text-xs text-[var(--color-muted-foreground)]">
+            {notification.body}
+          </p>
+          <p className="mt-1 text-[10px] text-[var(--color-muted-foreground)]">
+            {actor ? <span>{actor} · </span> : null}
+            <time dateTime={created?.toISOString()} title={exact}>{relative}</time>
+          </p>
+        </button>
+        {action ? (
+          <Button
+            type="button"
+            size="sm"
+            className="mt-2 h-7 text-xs"
+            disabled={busy}
+            onClick={() => void openDestination()}
+          >
+            {action.label}
+          </Button>
+        ) : null}
+      </div>
       <div className="relative shrink-0" ref={menuRef}>
         <Button
           type="button"
@@ -135,7 +150,7 @@ export function NotificationRow({
                   void openDestination()
                 }}
               >
-                Open
+                {action?.label ?? 'Open'}
               </button>
             ) : null}
             <button

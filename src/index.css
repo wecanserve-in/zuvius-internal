@@ -1,50 +1,76 @@
 @import 'tailwindcss';
 
 /*
- * Zuvius Lifesciences — logo palette (light UI)
- * Red #E2232A · Cyan-blue #00A9E6 · Gray #8C9198
- * Surfaces use high-luminance tints; actions use full brand chroma.
+ * Zuvius Internal — soft sage green productivity palette
+ * Logo (--brand-logo) is reference only; do not tint the logo asset.
  */
 @theme {
-  --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 
-  --brand-red: #e2232a;
-  --brand-blue: #00a9e6;
-  --brand-gray: #8c9198;
+  --brand-logo: #e2232a;
 
-  --color-background: #f3f5f8;
-  --color-foreground: #2a3038;
+  --color-background: #f6f8f6;
+  --color-foreground: #24352b;
 
   --color-card: #ffffff;
-  --color-card-foreground: #2a3038;
+  --color-card-foreground: #24352b;
 
-  --color-primary: #e2232a;
+  --color-primary: #477a60;
+  --color-primary-hover: #3d6b53;
+  --color-primary-pressed: #315e47;
   --color-primary-foreground: #ffffff;
+  --color-primary-muted: #e3efe6;
+  --color-primary-border: #dce5dd;
 
-  --color-secondary: #ffecec;
-  --color-secondary-foreground: #b8151c;
+  --color-header: #6b9b83;
+  --color-header-foreground: #ffffff;
+  --color-header-muted: rgba(255, 255, 255, 0.78);
+  --color-header-hover: rgba(255, 255, 255, 0.14);
+  --color-header-divider: rgba(255, 255, 255, 0.22);
 
-  --color-muted: #eef1f5;
-  --color-muted-foreground: #6d7580;
+  --color-secondary: #ffffff;
+  --color-secondary-foreground: #24352b;
 
-  --color-accent: #00a9e6;
+  --color-muted: #eef3ef;
+  --color-muted-foreground: #5b6b60;
+  --color-disabled-foreground: #9aa0a6;
+
+  --color-accent: #477a60;
   --color-accent-foreground: #ffffff;
 
-  --color-project: #00a9e6;
-  --color-project-muted: #e8f7fd;
-  --color-project-border: #bfe9f7;
-  --color-project-foreground: #006f9c;
+  --color-info: #1a73e8;
+  --color-info-muted: #e8f0fe;
+  --color-info-foreground: #174ea6;
+  --color-link: #1a73e8;
 
-  --color-destructive: #e2232a;
+  --color-project: #477a60;
+  --color-project-muted: #e3efe6;
+  --color-project-border: #dce5dd;
+  --color-project-foreground: #315e47;
+
+  --color-destructive: #d93025;
   --color-destructive-foreground: #ffffff;
+  --color-destructive-muted: #fce8e6;
+  --color-destructive-border: #f6aea9;
+  --color-destructive-emphasis: #b3261e;
 
-  --color-border: #dfe3ea;
-  --color-input: #d8dde5;
-  --color-ring: #e2232a;
+  --color-success: #188038;
+  --color-success-foreground: #137333;
+  --color-success-muted: #e6f4ea;
+  --color-success-border: #ceead6;
 
-  --color-success: #2e9e5b;
-  --color-success-muted: #e9f7ef;
-  --color-success-border: #bfe6cf;
+  --color-warning: #b06000;
+  --color-warning-foreground: #8a4b00;
+  --color-warning-muted: #fef7e0;
+  --color-warning-border: #f9e6a0;
+
+  --color-nav-active-bg: #e3efe6;
+  --color-nav-active-fg: #315e47;
+  --color-nav-hover-bg: #eef3ef;
+
+  --color-border: #dce5dd;
+  --color-input: #dce5dd;
+  --color-ring: #477a60;
 
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
@@ -52,39 +78,68 @@
 }
 
 .dark {
-  --color-background: #14181f;
-  --color-foreground: #eef1f5;
+  --color-background: #1a221e;
+  --color-foreground: #e8eeea;
 
-  --color-card: #1c222b;
-  --color-card-foreground: #eef1f5;
+  --color-card: #252d28;
+  --color-card-foreground: #e8eeea;
 
-  --color-primary: #ff4d55;
-  --color-primary-foreground: #ffffff;
+  --color-primary: #6b9b83;
+  --color-primary-hover: #5d8a74;
+  --color-primary-pressed: #477a60;
+  --color-primary-foreground: #1a221e;
+  --color-primary-muted: #2a3d32;
+  --color-primary-border: #3d5246;
 
-  --color-secondary: #2a1c1d;
-  --color-secondary-foreground: #ffb3b6;
+  --color-header: #477a60;
+  --color-header-foreground: #ffffff;
+  --color-header-muted: rgba(255, 255, 255, 0.75);
+  --color-header-hover: rgba(255, 255, 255, 0.12);
+  --color-header-divider: rgba(255, 255, 255, 0.18);
 
-  --color-muted: #252b34;
-  --color-muted-foreground: #9aa3ad;
+  --color-secondary: #2e3531;
+  --color-secondary-foreground: #e8eeea;
 
-  --color-accent: #3dc5f0;
-  --color-accent-foreground: #042028;
+  --color-muted: #2e3531;
+  --color-muted-foreground: #9aa89f;
+  --color-disabled-foreground: #7d8a82;
 
-  --color-project: #3dc5f0;
-  --color-project-muted: #122530;
-  --color-project-border: #1e4a5c;
-  --color-project-foreground: #a8e8fa;
+  --color-accent: #6b9b83;
+  --color-accent-foreground: #1a221e;
 
-  --color-destructive: #ff4d55;
-  --color-destructive-foreground: #ffffff;
+  --color-info: #8ab4f8;
+  --color-info-muted: #2d3848;
+  --color-info-foreground: #aecbfa;
+  --color-link: #8ab4f8;
 
-  --color-border: #323a46;
-  --color-input: #323a46;
-  --color-ring: #ff4d55;
+  --color-project: #6b9b83;
+  --color-project-muted: #2a3d32;
+  --color-project-border: #3d5246;
+  --color-project-foreground: #b5d4c4;
 
-  --color-success: #4cd68a;
-  --color-success-muted: #152820;
-  --color-success-border: #1f4a35;
+  --color-destructive: #f28b82;
+  --color-destructive-foreground: #1a221e;
+  --color-destructive-muted: #3c2f2e;
+  --color-destructive-border: #5c4038;
+  --color-destructive-emphasis: #f28b82;
+
+  --color-success: #81c995;
+  --color-success-foreground: #81c995;
+  --color-success-muted: #243329;
+  --color-success-border: #3d5244;
+
+  --color-warning: #fdd663;
+  --color-warning-foreground: #fdd663;
+  --color-warning-muted: #3d3826;
+  --color-warning-border: #5c5230;
+
+  --color-nav-active-bg: #2a3d32;
+  --color-nav-active-fg: #b5d4c4;
+  --color-nav-hover-bg: #2e3531;
+
+  --color-border: #3d5246;
+  --color-input: #3d5246;
+  --color-ring: #6b9b83;
 }
 
 * {
@@ -103,25 +158,117 @@ body {
   color: var(--color-foreground);
   -webkit-font-smoothing: antialiased;
   background-color: var(--color-background);
-  background-image:
-    radial-gradient(ellipse 100% 70% at 0% -10%, rgba(255, 236, 236, 0.75), transparent 50%),
-    radial-gradient(ellipse 90% 60% at 100% 0%, rgba(232, 247, 253, 0.85), transparent 48%),
-    linear-gradient(180deg, #f8f9fb 0%, var(--color-background) 40%, #f0f3f7 100%);
+  background-image: linear-gradient(180deg, #ffffff 0%, var(--color-background) 55%, #eef3ef 100%);
   background-attachment: fixed;
 }
 
 .dark body {
-  background-image:
-    radial-gradient(ellipse 80% 50% at 0% 0%, rgba(226, 35, 42, 0.12), transparent 50%),
-    radial-gradient(ellipse 70% 45% at 100% 10%, rgba(0, 169, 230, 0.1), transparent 45%),
-    linear-gradient(180deg, #14181f 0%, #10141a 100%);
+  background-image: linear-gradient(180deg, #1e2622 0%, var(--color-background) 100%);
 }
 
 #root {
   min-height: 100dvh;
 }
 
-/* Touch-friendly controls on phones */
+.app-header {
+  background-color: var(--color-header);
+  color: var(--color-header-foreground);
+  border-bottom: 1px solid var(--color-header-divider);
+}
+
+.app-header-btn {
+  color: var(--color-header-foreground);
+}
+
+.app-header-btn:hover {
+  background-color: var(--color-header-hover);
+}
+
+.app-header-btn:focus-visible {
+  outline: 2px solid var(--color-header-foreground);
+  outline-offset: 2px;
+}
+
+.text-danger {
+  color: var(--color-destructive-emphasis);
+}
+
+.dark .text-danger {
+  color: var(--color-destructive);
+}
+
+.text-success {
+  color: var(--color-success);
+}
+
+.dark .text-success {
+  color: var(--color-success-foreground);
+}
+
+.text-warning {
+  color: var(--color-warning-foreground);
+}
+
+.text-link {
+  color: var(--color-link);
+}
+
+.text-info {
+  color: var(--color-info-foreground);
+}
+
+.dark .text-info {
+  color: var(--color-info);
+}
+
+.surface-danger {
+  border: 1px solid var(--color-destructive-border);
+  background: var(--color-destructive-muted);
+  color: var(--color-destructive-emphasis);
+}
+
+.dark .surface-danger {
+  color: var(--color-destructive);
+}
+
+.surface-success {
+  border: 1px solid var(--color-success-border);
+  background: var(--color-success-muted);
+  color: var(--color-success-foreground);
+}
+
+.surface-warning {
+  border: 1px solid var(--color-warning-border);
+  background: var(--color-warning-muted);
+  color: var(--color-warning-foreground);
+}
+
+.surface-overdue {
+  border-color: var(--color-destructive-border);
+  background: var(--color-destructive-muted);
+  color: var(--color-destructive-emphasis);
+}
+
+.dark .surface-overdue {
+  color: var(--color-foreground);
+}
+
+.fill-success {
+  background-color: var(--color-success);
+}
+
+.fill-warning {
+  background-color: var(--color-warning);
+}
+
+.fill-primary {
+  background-color: var(--color-primary);
+}
+
+.fill-info {
+  background-color: var(--color-info);
+}
+
 @media (max-width: 640px) {
   button,
   [role='button'],
@@ -135,10 +282,318 @@ body {
   }
 }
 
-/* Native audio controls need explicit size inside chat bubbles */
 .voice-message-audio {
   display: block;
   width: 100%;
   min-width: 10rem;
   height: 2.25rem;
+}
+
+/* Baby CEO companion — subtle motion */
+@keyframes companion-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes companion-bounce {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  30% {
+    transform: translateY(-10px) scale(1.03);
+  }
+  60% {
+    transform: translateY(-3px) scale(1);
+  }
+}
+
+@keyframes companion-dance {
+  0%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  25% {
+    transform: rotate(-4deg) translateY(-4px);
+  }
+  75% {
+    transform: rotate(4deg) translateY(-4px);
+  }
+}
+
+@keyframes companion-concern {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-2px);
+  }
+  75% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes companion-sleepy {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-2px) rotate(-2deg);
+  }
+}
+
+.companion-float {
+  animation: companion-float 3.2s ease-in-out infinite;
+}
+
+.companion-bounce {
+  animation: companion-bounce 0.9s ease-in-out infinite;
+}
+
+.companion-dance {
+  animation: companion-dance 0.55s ease-in-out infinite;
+}
+
+.companion-concern {
+  animation: companion-concern 2.4s ease-in-out infinite;
+}
+
+.companion-sleepy {
+  animation: companion-sleepy 4.5s ease-in-out infinite;
+}
+
+@keyframes companion-nod {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  40% {
+    transform: rotate(6deg) translateY(-2px);
+  }
+  70% {
+    transform: rotate(-3deg);
+  }
+}
+
+@keyframes companion-overdue {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-3px) rotate(-2deg);
+  }
+  40% {
+    transform: translateX(3px) rotate(2deg);
+  }
+  60% {
+    transform: translateX(-2px);
+  }
+}
+
+.companion-nod {
+  animation: companion-nod 0.9s ease-in-out 1;
+}
+
+.companion-overdue {
+  animation: companion-overdue 1.1s ease-in-out 1;
+}
+
+@keyframes companion-idle-blink {
+  0%,
+  96%,
+  100% {
+    transform: scaleY(1);
+  }
+  98% {
+    transform: scaleY(0.12);
+  }
+}
+
+.companion-idle-blink {
+  transform-origin: center;
+  animation: companion-idle-blink 4.5s ease-in-out infinite;
+}
+
+@keyframes companion-celebrate-anticipate {
+  0% {
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    transform: scale(0.94, 1.04) translateY(2px);
+  }
+}
+
+@keyframes companion-celebrate-jump {
+  0% {
+    transform: translateY(4px) scale(0.96);
+  }
+  35% {
+    transform: translateY(-16px) scale(1.05);
+  }
+  55% {
+    transform: translateY(-8px) scale(1.02);
+  }
+  75% {
+    transform: translateY(-12px) scale(1.04);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes companion-celebrate-dance {
+  0%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  20% {
+    transform: rotate(-8deg) translateY(-6px);
+  }
+  40% {
+    transform: rotate(8deg) translateY(-4px);
+  }
+  60% {
+    transform: rotate(-6deg) translateY(-8px);
+  }
+  80% {
+    transform: rotate(6deg) translateY(-3px);
+  }
+}
+
+@keyframes companion-celebrate-spin {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  40% {
+    transform: rotate(12deg) scale(1.04);
+  }
+  70% {
+    transform: rotate(-8deg) scale(1.02);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+@keyframes companion-celebrate-pose {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.03);
+  }
+}
+
+@keyframes companion-sparkle-pop {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+.companion-celebrate-anticipate {
+  animation: companion-celebrate-anticipate 0.2s ease-out forwards;
+}
+
+.companion-celebrate-jump {
+  animation: companion-celebrate-jump 0.85s cubic-bezier(0.34, 1.4, 0.5, 1) 1;
+}
+
+.companion-celebrate-dance {
+  animation: companion-celebrate-dance 0.65s ease-in-out infinite;
+}
+
+.companion-celebrate-spin {
+  animation: companion-celebrate-spin 0.9s ease-in-out 1;
+}
+
+.companion-celebrate-pose {
+  animation: companion-celebrate-pose 1.2s ease-in-out 1;
+}
+
+.companion-celebrate-static {
+  animation: none;
+}
+
+.companion-celebrate-glow {
+  box-shadow:
+    0 0 0 2px rgba(212, 175, 55, 0.35),
+    0 8px 28px rgba(71, 122, 96, 0.35);
+}
+
+.companion-sparkle {
+  animation: companion-sparkle-pop 1.1s ease-in-out infinite;
+}
+
+@keyframes companion-peek-idle {
+  0%,
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
+  50% {
+    transform: translateX(-2px) rotate(-1.5deg);
+  }
+}
+
+.companion-peek-idle {
+  animation: companion-peek-idle 3.8s ease-in-out infinite;
+}
+
+.companion-anchor-left.companion-peek-idle {
+  animation-name: companion-peek-idle-left;
+}
+
+@keyframes companion-peek-idle-left {
+  0%,
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
+  50% {
+    transform: translateX(2px) rotate(1.5deg);
+  }
+}
+
+.companion-size-transition {
+  transition:
+    width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    height 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .companion-float,
+  .companion-bounce,
+  .companion-dance,
+  .companion-concern,
+  .companion-sleepy,
+  .companion-nod,
+  .companion-overdue,
+  .companion-idle-blink,
+  .companion-celebrate-anticipate,
+  .companion-celebrate-jump,
+  .companion-celebrate-dance,
+  .companion-celebrate-spin,
+  .companion-celebrate-pose,
+  .companion-sparkle,
+  .companion-peek-idle,
+  .companion-peek-idle-left {
+    animation: none;
+  }
+
+  .companion-size-transition {
+    transition: none;
+  }
 }

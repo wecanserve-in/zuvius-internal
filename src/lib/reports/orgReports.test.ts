@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { Timestamp } from 'firebase/firestore'
-import { computeOrgTaskSummary, filterTasksByRange } from '@/lib/reports/orgReports'
+import {
+  computeEmployeeLeaderboard,
+  computeOrgTaskSummary,
+  filterTasksByRange,
+} from '@/lib/reports/orgReports'
 import type { Task } from '@/types'
 
 function task(partial: Partial<Task> & Pick<Task, 'id' | 'status'>): Task {
@@ -46,5 +50,27 @@ describe('orgReports', () => {
     })
     const filtered = filterTasksByRange([old, recent], '7d')
     expect(filtered.map((t) => t.id)).toEqual(['new'])
+  })
+
+  it('ranks employees by on-time completions and penalises overdue', () => {
+    const now = Date.now()
+    const tasks = [
+      task({
+        id: 'a',
+        status: 'completed',
+        assigneeIds: ['alice'],
+        completedAt: Timestamp.fromMillis(now - 1000),
+        deadlineAt: Timestamp.fromMillis(now + 86400000),
+      }),
+      task({
+        id: 'b',
+        status: 'todo',
+        assigneeIds: ['bob'],
+        deadlineAt: Timestamp.fromMillis(now - 86400000),
+      }),
+    ]
+    const board = computeEmployeeLeaderboard(tasks, 5)
+    expect(board[0]?.userId).toBe('alice')
+    expect(board.find((r) => r.userId === 'bob')).toBeUndefined()
   })
 })

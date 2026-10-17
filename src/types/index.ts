@@ -103,6 +103,8 @@ export interface Project {
 
 export interface Task {
   id: string
+  /** Human-readable ID e.g. ZVS-MKT-000001 (immutable after create). */
+  businessTaskId?: string
   title: string
   description: string
   createdBy: string

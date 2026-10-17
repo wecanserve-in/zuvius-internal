@@ -62,7 +62,7 @@ export function DepartmentSelect({
                     type="button"
                     className={cn(
                       'w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-muted)]',
-                      d.id === value && 'bg-[var(--color-secondary)] font-medium',
+                      d.id === value && 'bg-[var(--color-nav-active-bg)] font-medium text-[var(--color-nav-active-fg)]',
                     )}
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => {

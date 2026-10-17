@@ -21,6 +21,7 @@ import {
   canManageUsers,
   hasMinRole,
 } from '@/lib/permissions'
+import { notifyConversationMessage } from '@/services/messageNotifications.service'
 import { listUsersByDepartment, listActiveUsers } from '@/services/users.service'
 import type { AppUser, ChatMessage, Conversation, Department } from '@/types'
 
@@ -523,6 +524,12 @@ export async function sendTextMessage(
     lastMessageAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
+
+  try {
+    await notifyConversationMessage(actor, convo, trimmed)
+  } catch (err) {
+    console.error('message notification failed', err)
+  }
 }
 
 /** Firestore rejects `undefined` field values — omit optional keys. */
@@ -564,6 +571,13 @@ export async function sendAttachmentMessage(
     lastMessageAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
+
+  const preview = payload.text?.trim() || `[${payload.type}]`
+  try {
+    await notifyConversationMessage(actor, convo, preview)
+  } catch (err) {
+    console.error('message notification failed', err)
+  }
 }
 
 export function conversationLabel(

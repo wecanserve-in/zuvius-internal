@@ -21,6 +21,13 @@ export const PERSONAL_WORK_TABS: { id: TaskHubTab; label: string }[] = [
   { id: 'today', label: 'Due today' },
 ]
 
+export type OrgWorkView = 'all' | 'dueToday'
+
+export const ORG_WORK_VIEW_TABS: { id: OrgWorkView; label: string }[] = [
+  { id: 'all', label: 'All work' },
+  { id: 'dueToday', label: 'Due today' },
+]
+
 export function TaskHubScopeSwitcher({
   scope,
   onOrganisation,
@@ -28,7 +35,7 @@ export function TaskHubScopeSwitcher({
   showOrganisation,
   organisationLabel = 'Organisation',
 }: {
-  scope: TaskHubScope | null
+  scope: TaskHubScope
   onOrganisation: () => void
   onYourWork: () => void
   showOrganisation: boolean
@@ -36,14 +43,14 @@ export function TaskHubScopeSwitcher({
 }) {
   return (
     <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+      <ScopeButton active={scope === 'yours'} onClick={onYourWork} className="flex-1 sm:flex-none">
+        Your work
+      </ScopeButton>
       {showOrganisation ? (
         <ScopeButton active={scope === 'org'} onClick={onOrganisation} className="flex-1 sm:flex-none">
           {organisationLabel}
         </ScopeButton>
       ) : null}
-      <ScopeButton active={scope === 'yours'} onClick={onYourWork} className="flex-1 sm:flex-none">
-        Your work
-      </ScopeButton>
     </div>
   )
 }
@@ -76,6 +83,38 @@ function ScopeButton({
   )
 }
 
+function FilterTabButton({
+  active,
+  highlight,
+  onClick,
+  children,
+}: {
+  active: boolean
+  highlight?: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        '-mb-px shrink-0 border-b-2 px-3 py-2.5 text-xs font-medium whitespace-nowrap transition-colors sm:px-2.5 sm:py-1.5',
+        active && highlight
+          ? 'border-[var(--color-warning)] text-[var(--color-warning-foreground)]'
+          : active
+            ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
+            : 'border-transparent text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]',
+        !active &&
+          highlight &&
+          'hover:border-[var(--color-warning)]/50 hover:text-[var(--color-warning-foreground)]',
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
 export function PersonalWorkSubNav({
   value,
   onChange,
@@ -86,21 +125,41 @@ export function PersonalWorkSubNav({
   return (
     <div className="-mx-1 overflow-x-auto border-b border-[var(--color-border)] px-1 pb-2 [scrollbar-width:thin]">
       <div className="flex min-w-max gap-0.5">
-      {PERSONAL_WORK_TABS.map((tab) => (
-        <button
-          key={tab.id}
-          type="button"
-          onClick={() => onChange(tab.id)}
-          className={cn(
-            '-mb-px shrink-0 border-b-2 px-3 py-2.5 text-xs font-medium whitespace-nowrap transition-colors sm:px-2.5 sm:py-1.5',
-            value === tab.id
-              ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-              : 'border-transparent text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]',
-          )}
-        >
-          {tab.label}
-        </button>
-      ))}
+        {PERSONAL_WORK_TABS.map((tab) => (
+          <FilterTabButton
+            key={tab.id}
+            active={value === tab.id}
+            highlight={tab.id === 'today'}
+            onClick={() => onChange(tab.id)}
+          >
+            {tab.label}
+          </FilterTabButton>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function OrganisationWorkSubNav({
+  value,
+  onChange,
+}: {
+  value: OrgWorkView
+  onChange: (view: OrgWorkView) => void
+}) {
+  return (
+    <div className="-mx-1 overflow-x-auto border-b border-[var(--color-border)] px-1 pb-2 [scrollbar-width:thin]">
+      <div className="flex min-w-max gap-0.5">
+        {ORG_WORK_VIEW_TABS.map((tab) => (
+          <FilterTabButton
+            key={tab.id}
+            active={value === tab.id}
+            highlight={tab.id === 'dueToday'}
+            onClick={() => onChange(tab.id)}
+          >
+            {tab.label}
+          </FilterTabButton>
+        ))}
       </div>
     </div>
   )
@@ -123,7 +182,7 @@ export function OverviewKindToggle({
         className={cn(
           'rounded px-3 py-1 text-xs font-medium transition-colors',
           value === 'projects'
-            ? 'bg-[var(--color-accent)] text-white'
+            ? 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)]'
             : 'text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]/50',
         )}
       >
@@ -135,7 +194,7 @@ export function OverviewKindToggle({
         className={cn(
           'rounded px-3 py-1 text-xs font-medium transition-colors',
           value === 'tasks'
-            ? 'bg-[var(--color-primary)] text-white'
+            ? 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)]'
             : 'text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]/50',
         )}
       >

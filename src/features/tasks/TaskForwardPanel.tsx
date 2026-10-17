@@ -135,7 +135,7 @@ export function TaskForwardPanel({
               <Label>Handover note</Label>
               <p className="mt-1 whitespace-pre-wrap text-sm">{note.trim()}</p>
             </div>
-            {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+            {error ? <p className="mt-2 text-sm text-danger">{error}</p> : null}
             <div className="mt-4 flex justify-end gap-2">
               <Button
                 type="button"
@@ -178,7 +178,7 @@ export function TaskForwardPanel({
                   placeholder="What you finished, what remains, and why you are forwarding…"
                 />
               </div>
-              {error ? <p className="text-sm text-red-600">{error}</p> : null}
+              {error ? <p className="text-sm text-danger">{error}</p> : null}
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" disabled={submitting} onClick={onCancel}>
                   Cancel

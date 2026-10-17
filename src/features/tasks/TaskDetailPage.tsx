@@ -1,13 +1,15 @@
 import { format } from 'date-fns'
-import { ArrowLeft, CheckCircle2, MessageSquare } from 'lucide-react'
+import { CheckCircle2, MessageSquare } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
+import { BackButton } from '@/components/common/BackButton'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { LoadingScreen } from '@/components/common/LoadingScreen'
 import { useAuth } from '@/features/auth/AuthContext'
+import { useGoBack } from '@/lib/navigation/useGoBack'
 import { canAccessTask, canDeleteTask } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
 import { isTaskOverdue } from '@/services/tasks.service'
@@ -23,6 +25,7 @@ import { TaskAttachments } from '@/features/tasks/TaskAttachments'
 import { TaskChatPanel } from '@/features/tasks/TaskChatPanel'
 import { TaskForwardPanel } from '@/features/tasks/TaskForwardPanel'
 import { TaskHistoryTimeline } from '@/features/tasks/TaskHistoryTimeline'
+import { CopyTaskIdButton } from '@/components/tasks/CopyTaskIdButton'
 import { ensureProjectParticipant } from '@/lib/projects/participants'
 import { canForwardTask } from '@/lib/tasks/handover'
 import { listDepartments } from '@/services/departments.service'
@@ -31,7 +34,7 @@ import type { AppUser, Department, Task, TaskAssignee, TaskHistoryEvent } from '
 
 export function TaskDetailPage() {
   const { taskId } = useParams<{ taskId: string }>()
-  const navigate = useNavigate()
+  const goBack = useGoBack('/')
   const location = useLocation()
   const { profile } = useAuth()
   const createdBanner = (location.state as { taskCreated?: boolean } | null)?.taskCreated
@@ -89,7 +92,7 @@ export function TaskDetailPage() {
   if (!taskId) return null
   if (!task) return <LoadingScreen label="Loading task…" />
   if (!profile || !canAccessTask(profile, task)) {
-    return <p className="text-sm text-red-600">You do not have access to this task.</p>
+    return <p className="text-sm text-danger">You do not have access to this task.</p>
   }
 
   const isAssignee = task.assigneeIds.includes(profile.id)
@@ -108,7 +111,7 @@ export function TaskDetailPage() {
     setSubmitting(true)
     try {
       await deleteTask(profile, task.id)
-      navigate('/tasks', { replace: true })
+      goBack()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Delete failed')
     } finally {
@@ -133,12 +136,7 @@ export function TaskDetailPage() {
   return (
     <div className="mx-auto w-full min-w-0 max-w-4xl space-y-3 pb-24 sm:pb-0">
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="ghost" size="sm" className="h-8 px-2" asChild>
-          <Link to="/tasks">
-            <ArrowLeft className="mr-1 h-3.5 w-3.5" />
-            Tasks
-          </Link>
-        </Button>
+        <BackButton label="Back" />
         {task.projectId ? (
           <Button variant="ghost" size="sm" className="h-8 px-2" asChild>
             <Link to={`/projects/${task.projectId}`}>View project</Link>
@@ -147,7 +145,7 @@ export function TaskDetailPage() {
       </div>
 
       {createdBanner ? (
-        <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100">
+        <p className="surface-success rounded-md px-3 py-2 text-sm">
           Task created successfully. The assignee has been notified.
         </p>
       ) : null}
@@ -158,16 +156,19 @@ export function TaskDetailPage() {
         </p>
       ) : null}
 
-      <Card className={cn(overdue && 'border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/35')}>
+      <Card className={cn(overdue && 'surface-overdue border')}>
         <CardContent className="space-y-3 p-4">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0 flex-1 space-y-1">
+              {task.businessTaskId ? (
+                <CopyTaskIdButton taskId={task.businessTaskId} className="-ml-2 mb-1" />
+              ) : null}
               <p className="whitespace-pre-wrap text-sm leading-relaxed">{bodyText}</p>
               <p
                 className={cn(
                   'text-xs',
                   overdue
-                    ? 'font-semibold text-red-700 dark:text-red-300'
+                    ? 'font-semibold text-danger'
                     : 'text-[var(--color-muted-foreground)]',
                 )}
               >
@@ -250,14 +251,14 @@ export function TaskDetailPage() {
               </div>
             </>
           ) : null}
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          {error ? <p className="text-sm text-danger">{error}</p> : null}
         </CardContent>
       </Card>
 
       {(isAssignee && (myWorkDone || justCompleted)) ? (
-        <Card className="border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30">
+        <Card className="surface-success border">
           <CardContent className="flex gap-3 py-3">
-            <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
             <p className="text-sm">You marked this task as completed.</p>
           </CardContent>
         </Card>
@@ -267,7 +268,7 @@ export function TaskDetailPage() {
         <Button
           variant="outline"
           size="sm"
-          className="text-red-600"
+          className="text-danger"
           disabled={submitting}
           onClick={() => void handleDelete()}
         >
@@ -297,10 +298,7 @@ export function TaskDetailPage() {
           departments={departments}
           usersById={usersById}
           onCancel={() => setForwardOpen(false)}
-          onDone={() => {
-            setForwardOpen(false)
-            navigate('/tasks?scope=yours&tab=mine', { replace: false })
-          }}
+          onDone={() => setForwardOpen(false)}
         />
       ) : null}
     </div>

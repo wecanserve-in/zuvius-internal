@@ -97,7 +97,7 @@ export function TaskChatPanel({
         {loading ? (
           <p className="py-6 text-center text-xs text-[var(--color-muted-foreground)]">Opening chat…</p>
         ) : error ? (
-          <p className="py-4 text-center text-xs text-red-600">{error}</p>
+          <p className="py-4 text-center text-xs text-danger">{error}</p>
         ) : messages.length === 0 ? (
           <p className="py-6 text-center text-xs text-[var(--color-muted-foreground)]">
             Messages for everyone on this task.

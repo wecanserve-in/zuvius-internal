@@ -29,7 +29,7 @@ export function canViewAllTasks(user: AppUser | null | undefined): boolean {
 }
 
 export function canViewReports(user: AppUser | null | undefined): boolean {
-  return Boolean(user?.isActive && user.role === 'super_admin')
+  return hasMinRole(user, 'department_admin')
 }
 
 /** Any active employee may create and assign tasks organisation-wide. */
@@ -250,12 +250,11 @@ export function canChangeRole(
 
 export const NAV_ITEMS = [
   { path: '/', label: 'Dashboard', minRole: 'member' as UserRole },
-  { path: '/tasks', label: 'Tasks', minRole: 'member' as UserRole },
   { path: '/messages', label: 'Messages', minRole: 'member' as UserRole },
   { path: '/team', label: 'Team', minRole: 'admin' as UserRole },
   { path: '/departments', label: 'Departments', minRole: 'admin' as UserRole },
   { path: '/activity', label: 'Activity', minRole: 'department_admin' as UserRole },
-  { path: '/reports', label: 'Reports', minRole: 'super_admin' as UserRole },
+  { path: '/reports', label: 'Reports', minRole: 'department_admin' as UserRole },
   { path: '/settings', label: 'Settings', minRole: 'member' as UserRole },
 ] as const
 

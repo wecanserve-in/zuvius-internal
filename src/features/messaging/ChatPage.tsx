@@ -308,7 +308,7 @@ export function ChatPage() {
             </p>
           ) : null}
           {uploadError ? (
-            <p className="text-sm text-red-600" role="alert">{uploadError}</p>
+            <p className="text-sm text-danger" role="alert">{uploadError}</p>
           ) : null}
           {canSend && pendingFile ? (
             <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-muted)]/30 p-3">

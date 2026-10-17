@@ -54,7 +54,6 @@ export function DepartmentAdminDashboard() {
       <PageHeader
         compact
         title={deptLabel}
-        description={`Hello, ${profile.displayName.split(' ')[0] ?? 'there'} — your current assignments`}
         action={
           <Link
             to="/tasks?scope=org&kind=projects"

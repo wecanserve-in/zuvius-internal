@@ -53,7 +53,8 @@ export function TaskStatusStepper({
             <span
               className={cn(
                 'rounded-full border px-2 py-0.5 font-medium whitespace-nowrap',
-                done && 'border-emerald-500/50 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200',
+                done &&
+                  'border-[var(--color-success-border)] bg-[var(--color-success-muted)] text-[var(--color-success-foreground)]',
                 active && 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]',
                 !done && !active && 'border-[var(--color-border)] text-[var(--color-muted-foreground)]',
               )}
@@ -64,7 +65,7 @@ export function TaskStatusStepper({
               <span
                 className={cn(
                   'mx-1 h-px w-3 sm:w-5',
-                  i < current ? 'bg-emerald-500/60' : 'bg-[var(--color-border)]',
+                  i < current ? 'bg-[var(--color-success)]/60' : 'bg-[var(--color-border)]',
                 )}
                 aria-hidden
               />

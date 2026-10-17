@@ -31,7 +31,7 @@ function ConversationRow({
       to={`/messages/${convo.id}`}
       className={cn(
         'flex min-h-[4.25rem] items-center justify-between gap-3 border-b border-[var(--color-border)] px-3 py-3 transition-colors active:bg-[var(--color-muted)]/40',
-        active ? 'bg-[var(--color-secondary)]' : 'hover:bg-[var(--color-muted)]/50',
+        active ? 'bg-[var(--color-nav-active-bg)]' : 'hover:bg-[var(--color-muted)]/50',
       )}
     >
       <div className="min-w-0">

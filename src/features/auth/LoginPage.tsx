@@ -58,7 +58,7 @@ export function LoginPage() {
         </CardHeader>
         <CardContent>
           {firebaseUser && !loading && !profile ? (
-            <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <div className="surface-warning mb-4 rounded-md px-3 py-2 text-sm">
               <p className="font-medium">Signed in, but profile not loaded.</p>
               <p className="mt-1 text-xs">
                 {profileError ??
@@ -91,13 +91,13 @@ export function LoginPage() {
               ) : null}
             </div>
             {authError ? (
-              <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{authError}</p>
+              <p className="surface-danger rounded-md px-3 py-2 text-sm">{authError}</p>
             ) : null}
             <Button type="submit" className="w-full" disabled={submitting}>
               {submitting ? 'Signing in…' : 'Sign in'}
             </Button>
             <p className="text-center text-sm text-[var(--color-muted-foreground)]">
-              <Link to="/forgot-password" className="text-[var(--color-primary)] hover:underline">
+              <Link to="/forgot-password" className="text-link hover:underline">
                 Forgot password?
               </Link>
             </p>

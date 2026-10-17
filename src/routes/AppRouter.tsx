@@ -14,7 +14,7 @@ import { ProjectCreatePage } from '@/features/tasks/ProjectCreatePage'
 import { ProjectDetailPage } from '@/features/tasks/ProjectDetailPage'
 import { TaskCreatePage } from '@/features/tasks/TaskCreatePage'
 import { TaskDetailPage } from '@/features/tasks/TaskDetailPage'
-import { TasksHubPage } from '@/features/tasks/TasksHubPage'
+import { TasksHubRedirect } from '@/routes/TasksHubRedirect'
 import { ProfilePage } from '@/features/users/ProfilePage'
 import { TeamPage } from '@/features/users/TeamPage'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
@@ -31,14 +31,14 @@ export function AppRouter() {
             <Route path="messages" element={<MessagesLayout />}>
               <Route path=":conversationId" element={<ChatPage />} />
             </Route>
-            <Route path="tasks" element={<TasksHubPage />} />
-            <Route path="tasks/mine" element={<Navigate to="/tasks?scope=yours&tab=mine" replace />} />
-            <Route path="tasks/overdue" element={<Navigate to="/tasks?scope=yours&tab=overdue" replace />} />
-            <Route path="tasks/created" element={<Navigate to="/tasks?scope=yours&tab=created" replace />} />
-            <Route path="tasks/department" element={<Navigate to="/tasks?scope=org" replace />} />
-            <Route path="tasks/pending" element={<Navigate to="/tasks?scope=yours&tab=mine" replace />} />
-            <Route path="tasks/completed" element={<Navigate to="/tasks?scope=yours&tab=completed" replace />} />
-            <Route path="tasks/today" element={<Navigate to="/tasks?scope=yours&tab=today" replace />} />
+            <Route path="tasks" element={<TasksHubRedirect />} />
+            <Route path="tasks/mine" element={<Navigate to="/?scope=yours&tab=mine" replace />} />
+            <Route path="tasks/overdue" element={<Navigate to="/?scope=yours&tab=overdue" replace />} />
+            <Route path="tasks/created" element={<Navigate to="/?scope=yours&tab=created" replace />} />
+            <Route path="tasks/department" element={<Navigate to="/?scope=org" replace />} />
+            <Route path="tasks/pending" element={<Navigate to="/?scope=yours&tab=mine" replace />} />
+            <Route path="tasks/completed" element={<Navigate to="/?scope=yours&tab=completed" replace />} />
+            <Route path="tasks/today" element={<Navigate to="/?scope=yours&tab=today" replace />} />
             <Route path="tasks/new" element={<TaskCreatePage />} />
             <Route path="projects/new" element={<ProjectCreatePage />} />
             <Route path="projects/:projectId" element={<ProjectDetailPage />} />

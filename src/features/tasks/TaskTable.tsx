@@ -42,6 +42,7 @@ export function TaskTable({
   }
 
   const rows = useMemo(() => sortTasksForDisplay(tasks), [tasks])
+  const showPeople = Boolean(usersById) && (showAssignee || management)
 
   if (rows.length === 0) {
     return (
@@ -56,6 +57,8 @@ export function TaskTable({
     compact && 'text-xs',
   )
 
+  const cellPad = compact ? 'px-2 py-1.5 align-top' : 'align-top'
+
   return (
     <div className="max-w-full min-w-0">
       <TaskMobileList
@@ -65,24 +68,29 @@ export function TaskTable({
         management={management}
         showAssignee={showAssignee}
       />
-      <Table className={cn('hidden md:table', compact ? 'text-xs' : undefined)}>
+      <Table
+        className={cn('hidden md:table table-fixed', compact ? 'text-xs' : undefined)}
+      >
         <TableHeader>
           <TableRow className={compact ? 'hover:bg-transparent' : undefined}>
-            <TableHead className={compact ? 'h-8 px-2' : undefined}>Task</TableHead>
-            {management ? (
+            <TableHead className={cn('w-[7.5rem]', compact && 'h-8 px-2')}>Task ID</TableHead>
+            <TableHead className={cn('w-[22%]', compact && 'h-8 px-2')}>Task</TableHead>
+            {showPeople ? (
               <>
-                <TableHead className={compact ? 'h-8 px-2' : undefined}>Creator</TableHead>
-                <TableHead className={compact ? 'h-8 px-2' : undefined}>Assignee</TableHead>
-                <TableHead className={compact ? 'h-8 px-2' : undefined}>Dept</TableHead>
+                <TableHead className={cn('w-[11%]', compact && 'h-8 px-2')}>Assigned by</TableHead>
+                {showAssignee || management ? (
+                  <TableHead className={cn('w-[12%]', compact && 'h-8 px-2')}>Assigned to</TableHead>
+                ) : null}
               </>
-            ) : showAssignee ? (
-              <TableHead>Assignee</TableHead>
             ) : null}
-            <TableHead className={compact ? 'h-8 px-2' : undefined}>Priority</TableHead>
-            <TableHead className={compact ? 'h-8 px-2' : undefined}>Deadline</TableHead>
-            <TableHead className={compact ? 'h-8 px-2' : undefined}>Status</TableHead>
             {management ? (
-              <TableHead className={compact ? 'h-8 px-2' : undefined}>Updated</TableHead>
+              <TableHead className={cn('w-[9%]', compact && 'h-8 px-2')}>Dept</TableHead>
+            ) : null}
+            <TableHead className={cn('w-[5.5rem]', compact && 'h-8 px-2')}>Priority</TableHead>
+            <TableHead className={cn('w-[8.5rem]', compact && 'h-8 px-2')}>Deadline</TableHead>
+            <TableHead className={cn('w-[5.5rem]', compact && 'h-8 px-2')}>Status</TableHead>
+            {management ? (
+              <TableHead className={cn('w-[5rem]', compact && 'h-8 px-2')}>Updated</TableHead>
             ) : null}
           </TableRow>
         </TableHeader>
@@ -91,35 +99,38 @@ export function TaskTable({
             const overdue = isTaskOverdue(task)
             return (
             <TableRow key={task.id} className={overdueTaskSurfaceClass(overdue)}>
-              <TableCell className={compact ? 'max-w-[14rem] px-2 py-1.5' : undefined}>
+              <TableCell className={cn(cellPad, 'font-mono text-[10px] sm:text-xs')}>
+                {task.businessTaskId ?? '—'}
+              </TableCell>
+              <TableCell className={cellPad}>
                 <Link
                   to={`/tasks/${task.id}`}
-                  className={cn('block truncate font-medium hover:underline', overdue && 'text-red-900 dark:text-red-100')}
-                  title={taskDisplayTitle(task)}
+                  className={cn(
+                    'block whitespace-normal break-words font-medium leading-snug text-[var(--color-primary)] hover:underline',
+                    overdue && 'text-danger',
+                  )}
                 >
                   {taskDisplayTitle(task)}
                 </Link>
               </TableCell>
-              {management ? (
+              {showPeople ? (
                 <>
-                  <TableCell className={cn(cellMuted, compact && 'max-w-[8rem] truncate px-2 py-1.5')}>
-                    <span title={name(task.createdBy)}>{name(task.createdBy)}</span>
+                  <TableCell className={cn(cellMuted, cellPad, 'whitespace-normal break-words')}>
+                    {name(task.createdBy)}
                   </TableCell>
-                  <TableCell className={cn(cellMuted, compact && 'max-w-[8rem] truncate px-2 py-1.5')}>
-                    <span title={task.assigneeIds.map((id) => name(id)).join(', ')}>
+                  {showAssignee || management ? (
+                    <TableCell className={cn(cellMuted, cellPad, 'whitespace-normal break-words')}>
                       {task.assigneeIds.map((id) => name(id)).join(', ')}
-                    </span>
-                  </TableCell>
-                  <TableCell className={cn(cellMuted, compact && 'px-2 py-1.5')}>
-                    {assigneeDept(task)}
-                  </TableCell>
+                    </TableCell>
+                  ) : null}
                 </>
-              ) : showAssignee ? (
-                <TableCell className={cn(cellMuted, compact && 'max-w-[8rem] truncate px-2 py-1.5')}>
-                  {task.assigneeIds.map((id) => name(id)).join(', ')}
+              ) : null}
+              {management ? (
+                <TableCell className={cn(cellMuted, cellPad)}>
+                  {assigneeDept(task)}
                 </TableCell>
               ) : null}
-              <TableCell className={compact ? 'px-2 py-1.5' : undefined}>
+              <TableCell className={cellPad}>
                 <Badge
                   variant={priorityVariant[task.priority]}
                   className={cn('capitalize', compact && 'px-1.5 py-0 text-[10px]')}
@@ -129,16 +140,17 @@ export function TaskTable({
               </TableCell>
               <TableCell
                 className={cn(
-                  compact && 'whitespace-nowrap px-2 py-1.5',
-                  overdue ? 'font-medium text-red-700 dark:text-red-300' : cellMuted,
+                  cellPad,
+                  'whitespace-normal',
+                  overdue ? 'font-medium text-danger dark:text-danger' : cellMuted,
                 )}
               >
                 {task.deadlineAt
                   ? format(task.deadlineAt.toDate(), compact ? 'MMM d, h:mm a' : 'MMM d, HH:mm')
                   : '—'}
-                {overdue ? <span className="ml-1.5 text-[10px] uppercase tracking-wide">Overdue</span> : null}
+                {overdue ? <span className="ml-1 block text-[10px] uppercase tracking-wide">Overdue</span> : null}
               </TableCell>
-              <TableCell className={compact ? 'px-2 py-1.5' : undefined}>
+              <TableCell className={cellPad}>
                 <Badge
                   variant="outline"
                   className={cn('capitalize', compact && 'px-1.5 py-0 text-[10px]')}
@@ -147,7 +159,7 @@ export function TaskTable({
                 </Badge>
               </TableCell>
               {management ? (
-                <TableCell className={cn(cellMuted, compact && 'whitespace-nowrap px-2 py-1.5')}>
+                <TableCell className={cn(cellMuted, cellPad, 'whitespace-nowrap')}>
                   {task.updatedAt ? format(task.updatedAt.toDate(), compact ? 'MMM d' : 'MMM d, HH:mm') : '—'}
                 </TableCell>
               ) : null}

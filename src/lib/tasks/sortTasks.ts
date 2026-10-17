@@ -18,5 +18,5 @@ export function sortTasksForDisplay(tasks: Task[]): Task[] {
 
 export function overdueTaskSurfaceClass(overdue: boolean): string {
   if (!overdue) return ''
-  return 'border-red-300/80 bg-red-50 text-red-950 dark:border-red-900 dark:bg-red-950/35 dark:text-red-50'
+  return 'surface-overdue border'
 }

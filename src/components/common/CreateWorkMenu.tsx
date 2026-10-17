@@ -29,7 +29,7 @@ export function CreateWorkMenu({ className }: { className?: string }) {
       <DropdownMenuContent align="end" className="w-44">
         <DropdownMenuItem asChild>
           <Link to="/projects/new" className="flex w-full items-center gap-2">
-            <FolderKanban className="h-4 w-4 text-[var(--color-accent)]" aria-hidden />
+            <FolderKanban className="h-4 w-4 text-[var(--color-primary)]" aria-hidden />
             Create project
           </Link>
         </DropdownMenuItem>

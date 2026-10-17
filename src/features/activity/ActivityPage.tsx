@@ -202,11 +202,7 @@ export function ActivityPage() {
   if (showOrgTaskHistory) {
     return (
       <div className="mx-auto w-full min-w-0 max-w-3xl space-y-3">
-        <PageHeader
-          compact
-          title="Activity"
-          description="Task history across the organisation — filter by time, event, department, or person."
-        />
+        <PageHeader compact title="Activity" />
 
         <div className="flex flex-col gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] p-2 sm:flex-row sm:flex-wrap sm:items-center">
           <Input
@@ -323,15 +319,7 @@ export function ActivityPage() {
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-3xl space-y-3">
-      <PageHeader
-        compact
-        title="Activity"
-        description={
-          isDeptAdmin
-            ? 'Updates in your managed departments.'
-            : 'Recent updates across the organisation.'
-        }
-      />
+      <PageHeader compact title="Activity" />
 
       <div className="flex flex-col gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] p-2 sm:flex-row sm:flex-wrap sm:items-center">
         <Input

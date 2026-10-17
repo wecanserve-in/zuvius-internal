@@ -36,7 +36,6 @@ export function MemberDashboard() {
       <PageHeader
         compact
         title={`Hello, ${profile?.displayName.split(' ')[0] ?? 'there'}`}
-        description="Work currently assigned to you"
         action={
           <Link
             to="/tasks?scope=yours&tab=mine&kind=tasks"

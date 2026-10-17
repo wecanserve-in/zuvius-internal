@@ -37,7 +37,7 @@ export function ProfilePage() {
 
   if (!canView) {
     return (
-      <p className="text-sm text-red-600">You do not have permission to view this profile.</p>
+      <p className="text-sm text-danger">You do not have permission to view this profile.</p>
     )
   }
 

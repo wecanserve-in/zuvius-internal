@@ -77,8 +77,8 @@ export function Sidebar({
                   cn(
                     'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                     isActive
-                      ? 'bg-[var(--color-secondary)] text-[var(--color-secondary-foreground)] shadow-sm'
-                      : 'text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]',
+                      ? 'bg-[var(--color-nav-active-bg)] text-[var(--color-nav-active-fg)] shadow-sm'
+                      : 'text-[var(--color-muted-foreground)] hover:bg-[var(--color-nav-hover-bg)] hover:text-[var(--color-foreground)]',
                   )
                 }
               >

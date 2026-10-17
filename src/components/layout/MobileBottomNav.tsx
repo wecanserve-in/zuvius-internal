@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bell, CheckSquare, LayoutDashboard, MessageSquare, Plus } from 'lucide-react'
+import { Bell, LayoutDashboard, MessageSquare, Plus } from 'lucide-react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { CreateWorkSheet } from '@/components/common/CreateWorkSheet'
 import { useAuth } from '@/features/auth/AuthContext'
@@ -7,10 +7,7 @@ import { canCreateTasks } from '@/lib/permissions'
 import { shouldShowMobileFab } from '@/lib/layout/mobileChrome'
 import { cn } from '@/lib/utils'
 
-const primaryLeft = [
-  { path: '/', label: 'Home', icon: LayoutDashboard, end: true },
-  { path: '/tasks', label: 'Tasks', icon: CheckSquare, end: false },
-] as const
+const primaryLeft = [{ path: '/', label: 'Home', icon: LayoutDashboard, end: true }] as const
 
 const primaryRight = [{ path: '/messages', label: 'Messages', icon: MessageSquare, end: false }] as const
 

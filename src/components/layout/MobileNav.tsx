@@ -85,8 +85,8 @@ export function MobileNav({
                   cn(
                     'flex min-h-11 items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium',
                     isActive
-                      ? 'bg-[var(--color-secondary)] text-[var(--color-primary)]'
-                      : 'text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]',
+                      ? 'bg-[var(--color-nav-active-bg)] text-[var(--color-nav-active-fg)]'
+                      : 'text-[var(--color-muted-foreground)] hover:bg-[var(--color-nav-hover-bg)]',
                   )
                 }
               >

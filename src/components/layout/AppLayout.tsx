@@ -4,9 +4,11 @@ import { Header } from '@/components/layout/Header'
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav'
 import { MobileNav } from '@/components/layout/MobileNav'
 import { Sidebar } from '@/components/layout/Sidebar'
+import { showHeaderBack } from '@/lib/navigation/showHeaderBack'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/features/auth/AuthContext'
 import { ChatTitleProvider, useChatTitle } from '@/features/messaging/ChatTitleContext'
+import { BabyCeoCompanion } from '@/components/companion/BabyCeoCompanion'
 import { subscribeNotifications, unreadCount } from '@/services/notifications.service'
 
 const titles: Record<string, string> = {
@@ -96,7 +98,8 @@ function AppLayoutFrame() {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <Header
           title={headerTitle}
-          backTo={inChat ? '/messages' : undefined}
+          showBack={showHeaderBack(pathname)}
+          backFallback={inChat ? '/messages' : '/'}
           onMenuClick={() => setMobileNavOpen(true)}
           sidebarOpen={sidebarOpen}
           onSidebarOpen={() => setSidebarOpen(true)}
@@ -120,6 +123,7 @@ function AppLayoutFrame() {
           )}
         </main>
       </div>
+      <BabyCeoCompanion userId={profile.id} />
     </div>
   )
 }

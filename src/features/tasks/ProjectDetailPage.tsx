@@ -1,7 +1,8 @@
 import { format } from 'date-fns'
-import { ArrowLeft, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
+import { BackButton } from '@/components/common/BackButton'
 import { LoadingScreen } from '@/components/common/LoadingScreen'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/features/auth/AuthContext'
@@ -93,13 +94,13 @@ export function ProjectDetailPage() {
   if (stillLoading) return <LoadingScreen label="Loading project…" />
 
   if (!profile || !displayProject) {
-    return <p className="text-sm text-red-600">You do not have access to this project.</p>
+    return <p className="text-sm text-danger">You do not have access to this project.</p>
   }
 
   if (
     !canAccessProject(profile, displayProject, { assignedToProjectTask: assignedHere })
   ) {
-    return <p className="text-sm text-red-600">You do not have access to this project.</p>
+    return <p className="text-sm text-danger">You do not have access to this project.</p>
   }
 
   const memberOwnerView = isMemberProjectOwner(profile, displayProject, tasks)
@@ -113,23 +114,12 @@ export function ProjectDetailPage() {
   return (
     <div className="mx-auto w-full min-w-0 max-w-4xl space-y-3">
       {taskAddedBanner ? (
-        <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100">
+        <p className="surface-success rounded-md px-3 py-2 text-sm">
           Task added to this project.
         </p>
       ) : null}
 
-      <Button variant="ghost" size="sm" className="h-8 px-2" asChild>
-        <Link
-          to={
-            profile.role === 'member'
-              ? '/tasks?scope=yours&tab=created&kind=projects'
-              : '/tasks'
-          }
-        >
-          <ArrowLeft className="mr-1 h-3.5 w-3.5" />
-          Tasks
-        </Link>
-      </Button>
+      <BackButton label="Back" />
 
       <header className="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] p-4">
         <div className="flex flex-wrap items-start justify-between gap-2">
@@ -155,7 +145,7 @@ export function ProjectDetailPage() {
                 {tasks.filter((t) => t.status === 'completed').length} / {tasks.length} tasks done
               </span>
               {displayProject.creationStatus === 'partial' ? (
-                <span className="text-amber-700 text-xs">Some tasks failed to save — review list below.</span>
+                <span className="text-warning text-xs">Some tasks failed to save — review list below.</span>
               ) : null}
             </div>
             <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-muted)]">

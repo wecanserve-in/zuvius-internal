@@ -42,12 +42,17 @@ import { getUserById } from '@/services/users.service'
 import { notifyTaskAssigneeCompleted, notifyTaskHandover } from '@/services/taskNotifications.service'
 import { postTaskCreatedChatEvents, postTaskHandoverChatEvents } from '@/services/taskChat.service'
 import { uploadFilesForNewTask } from '@/services/uploads.service'
+import {
+  allocateBusinessTaskIdInTransaction,
+  deptCodeForDepartmentId,
+} from '@/services/businessTaskId.service'
 
 const tasksCol = collection(db, 'tasks')
 
 function mapTask(id: string, data: Record<string, unknown>): Task {
   return {
     id,
+    businessTaskId: data.businessTaskId ? String(data.businessTaskId) : undefined,
     title: String(data.title ?? ''),
     description: String(data.description ?? ''),
     createdBy: String(data.createdBy ?? ''),
@@ -144,23 +149,28 @@ export async function createTask(
     }))
   }
 
+  const deptCode = await deptCodeForDepartmentId(departmentId)
   const taskRef = doc(collection(db, 'tasks'))
-  await setDoc(taskRef, {
-    title: input.title,
-    description: input.description,
-    createdBy: actor.id,
-    departmentId: input.departmentId,
-    ...(input.projectId ? { projectId: input.projectId } : {}),
-    assigneeIds: input.assigneeIds,
-    initialAssigneeIds: input.assigneeIds,
-    priority: input.priority,
-    status: 'todo',
-    deadlineAt: input.deadlineAt ?? null,
-    requiresReview: input.requiresReview ?? false,
-    category: input.category ?? null,
-    ...(attachmentIds.length > 0 ? { attachmentIds, attachmentMeta } : {}),
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+  await runTransaction(db, async (tx) => {
+    const businessTaskId = await allocateBusinessTaskIdInTransaction(departmentId, deptCode, tx)
+    tx.set(taskRef, {
+      businessTaskId,
+      title: input.title,
+      description: input.description,
+      createdBy: actor.id,
+      departmentId: input.departmentId,
+      ...(input.projectId ? { projectId: input.projectId } : {}),
+      assigneeIds: input.assigneeIds,
+      initialAssigneeIds: input.assigneeIds,
+      priority: input.priority,
+      status: 'todo',
+      deadlineAt: input.deadlineAt ?? null,
+      requiresReview: input.requiresReview ?? false,
+      category: input.category ?? null,
+      ...(attachmentIds.length > 0 ? { attachmentIds, attachmentMeta } : {}),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
   })
 
   const assigneeBatch = writeBatch(db)

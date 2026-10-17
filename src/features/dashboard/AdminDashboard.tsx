@@ -117,7 +117,6 @@ export function AdminDashboard() {
       <PageHeader
         compact
         title={isSuper ? 'Organization' : 'Operations'}
-        description="Filter by department and view projects or individual tasks."
         action={
           <div className="hidden sm:block">
             <CreateWorkMenu />
@@ -178,7 +177,6 @@ export function AdminDashboard() {
             <div className="grid gap-4 lg:grid-cols-2">
               <TaskGroupPanel
                 title="Assigned by"
-                description="Individual tasks created by each member"
                 groups={assignedByTaskGroups}
                 usersById={usersById}
                 openId={assignByOpen}
@@ -187,7 +185,6 @@ export function AdminDashboard() {
               />
               <TaskGroupPanel
                 title="Assigned to"
-                description="Individual tasks currently assigned to each member"
                 groups={assignedToTaskGroups}
                 usersById={usersById}
                 openId={assignToOpen}
@@ -427,7 +424,7 @@ function TaskGroupPanel({
   deptById,
 }: {
   title: string
-  description: string
+  description?: string
   groups: { userId: string; tasks: Task[] }[]
   usersById: Map<string, AppUser>
   openId: string | null
@@ -438,7 +435,9 @@ function TaskGroupPanel({
     <section className="rounded-md border border-[var(--color-border)]">
       <div className="border-b px-3 py-2">
         <h3 className="text-sm font-medium">{title}</h3>
-        <p className="text-xs text-[var(--color-muted-foreground)]">{description}</p>
+        {description ? (
+          <p className="text-xs text-[var(--color-muted-foreground)]">{description}</p>
+        ) : null}
       </div>
       <ul className="max-h-[28rem] divide-y overflow-auto">
         {groups.length === 0 ? (

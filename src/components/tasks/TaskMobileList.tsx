@@ -56,15 +56,20 @@ export function TaskMobileList({
             <Link
               to={`/tasks/${task.id}`}
               className={cn(
-                'flex items-center gap-2 px-3 py-3 active:bg-[var(--color-muted)]',
+                'flex items-start gap-2 px-3 py-3 active:bg-[var(--color-muted)]',
                 overdueTaskSurfaceClass(overdue),
               )}
             >
               <div className="min-w-0 flex-1 space-y-1.5">
+                {task.businessTaskId ? (
+                  <p className="font-mono text-[10px] text-[var(--color-muted-foreground)]">
+                    {task.businessTaskId}
+                  </p>
+                ) : null}
                 <p
                   className={cn(
-                    'line-clamp-2 text-sm font-medium leading-snug',
-                    overdue && 'text-red-900 dark:text-red-100',
+                    'text-sm font-medium leading-snug whitespace-normal break-words',
+                    overdue && 'text-danger dark:text-danger',
                   )}
                 >
                   {taskDisplayTitle(task)}
@@ -81,7 +86,7 @@ export function TaskMobileList({
                   className={cn(
                     'text-xs',
                     overdue
-                      ? 'font-medium text-red-700 dark:text-red-300'
+                      ? 'font-medium text-danger dark:text-danger'
                       : 'text-[var(--color-muted-foreground)]',
                   )}
                 >
@@ -91,17 +96,17 @@ export function TaskMobileList({
                   {overdue ? ' · Overdue' : ''}
                 </p>
                 {management ? (
-                  <p className="text-xs text-[var(--color-muted-foreground)]">
+                  <p className="text-xs text-[var(--color-muted-foreground)] whitespace-normal break-words">
                     {name(task.createdBy)} → {task.assigneeIds.map((id) => name(id)).join(', ')} ·{' '}
                     {assigneeDept(task)}
                   </p>
-                ) : showAssignee ? (
+                ) : showAssignee && usersById ? (
                   <p className="text-xs text-[var(--color-muted-foreground)]">
                     {task.assigneeIds.map((id) => name(id)).join(', ')}
                   </p>
                 ) : null}
               </div>
-              <ChevronRight className="h-4 w-4 shrink-0 text-[var(--color-muted-foreground)]" aria-hidden />
+              <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-[var(--color-muted-foreground)]" aria-hidden />
             </Link>
           </li>
         )

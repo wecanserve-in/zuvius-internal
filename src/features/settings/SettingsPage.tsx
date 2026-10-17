@@ -58,7 +58,7 @@ export function SettingsPage() {
             <p className="mb-1 text-xs text-[var(--color-muted-foreground)]">Profile photo (stored in R2)</p>
             <Input type="file" accept="image/*" disabled={uploading} onChange={(ev) => void onPhotoPick(ev)} />
           </div>
-          {uploadError ? <p className="text-sm text-red-600">{uploadError}</p> : null}
+          {uploadError ? <p className="text-sm text-danger">{uploadError}</p> : null}
           <p>Name: {profile?.displayName}</p>
           <p>Email: {profile?.email}</p>
           <p className="capitalize">Role: {profile ? formatUserRole(profile.role) : '—'}</p>

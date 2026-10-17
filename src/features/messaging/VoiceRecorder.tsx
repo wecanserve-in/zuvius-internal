@@ -144,7 +144,7 @@ export function VoiceRecorder({
           </div>
           {children}
         </div>
-        {error ? <p className="text-xs text-red-600">{error}</p> : null}
+        {error ? <p className="text-xs text-danger">{error}</p> : null}
       </div>
     )
   }
@@ -156,7 +156,7 @@ export function VoiceRecorder({
         {recordingLabel}
       </div>
       {previewBar}
-      {error ? <p className="text-xs text-red-600">{error}</p> : null}
+      {error ? <p className="text-xs text-danger">{error}</p> : null}
     </div>
   )
 }

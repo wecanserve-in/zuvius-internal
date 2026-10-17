@@ -86,7 +86,7 @@ export function ForwardRecipientSelector({
               </p>
             ) : loadError ? (
               <div className="space-y-2 px-3 py-4">
-                <p className="text-sm text-red-600" role="alert">{loadError}</p>
+                <p className="text-sm text-danger" role="alert">{loadError}</p>
                 {onRetry ? (
                   <Button type="button" size="sm" variant="outline" onClick={onRetry}>
                     Retry

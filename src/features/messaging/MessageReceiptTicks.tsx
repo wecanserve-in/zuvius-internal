@@ -27,7 +27,7 @@ export function MessageReceiptTicks({ status }: { status: ReceiptStatus }) {
   if (status === 'read') {
     return (
       <CheckCheck
-        className="h-3.5 w-3.5 shrink-0 text-emerald-300"
+        className="h-3.5 w-3.5 shrink-0 text-success"
         aria-label="Seen"
       />
     )

@@ -117,7 +117,6 @@ export function DepartmentsPage() {
       <PageHeader
         compact
         title="Departments"
-        description="Organization structure and department groups"
         action={
           <PageHeaderAction label="Add department" onClick={() => setCreateOpen(true)} />
         }
@@ -161,7 +160,7 @@ export function DepartmentsPage() {
                 rows={2}
               />
             </div>
-            {error ? <p className="text-sm text-red-600">{error}</p> : null}
+            {error ? <p className="text-sm text-danger">{error}</p> : null}
             <div className="flex justify-end gap-2 pt-1">
               <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
                 Cancel

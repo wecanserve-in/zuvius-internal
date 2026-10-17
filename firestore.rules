@@ -38,6 +38,11 @@ service cloud.firestore {
       return hasMinRole('admin');
     }
 
+    function validBusinessTaskId(id) {
+      return id is string
+        && id.matches('^ZVS-[A-Z0-9]{1,12}-[0-9]{6}$');
+    }
+
     function actorDepartmentIds() {
       return userDoc().data.keys().hasAny(['departmentIds'])
         ? userDoc().data.departmentIds
@@ -402,6 +407,8 @@ service cloud.firestore {
         && request.resource.data.assigneeIds is list
         && request.resource.data.departmentId is string
         && request.resource.data.departmentId.size() > 0
+        && request.resource.data.keys().hasAll(['businessTaskId'])
+        && validBusinessTaskId(request.resource.data.businessTaskId)
         && assigneesValidForOrgHandover(request.resource.data.assigneeIds)
         && (
           !request.resource.data.keys().hasAny(['projectId'])
@@ -523,6 +530,11 @@ service cloud.firestore {
           || (request.resource.data.type == 'task_assigned'
             && exists(/databases/$(database)/documents/tasks/$(request.resource.data.entityId))
             && request.auth.uid in get(/databases/$(database)/documents/tasks/$(request.resource.data.entityId)).data.assigneeIds)
+          || (request.resource.data.entityType == 'conversation'
+            && request.resource.data.type in ['message_direct', 'message_group']
+            && request.resource.data.entityId is string
+            && exists(/databases/$(database)/documents/conversations/$(request.resource.data.entityId))
+            && request.auth.uid in get(/databases/$(database)/documents/conversations/$(request.resource.data.entityId)).data.memberIds)
         );
       allow delete: if false;
     }
@@ -595,6 +607,24 @@ service cloud.firestore {
     match /activityLogs/{logId} {
       allow read: if isActiveUser() && hasMinRole('department_admin');
       allow write: if false;
+    }
+
+    match /taskIdCounters/{deptId} {
+      allow read: if isActiveUser();
+
+      allow create: if isActiveUser()
+        && request.resource.data.departmentId == deptId
+        && request.resource.data.lastSequence == 1
+        && request.resource.data.deptCode is string
+        && request.resource.data.deptCode.size() > 0
+        && request.resource.data.deptCode.size() <= 12;
+
+      allow update: if isActiveUser()
+        && resource.data.departmentId == deptId
+        && request.resource.data.departmentId == deptId
+        && request.resource.data.deptCode == resource.data.deptCode
+        && request.resource.data.lastSequence == resource.data.lastSequence + 1
+        && request.resource.data.lastSequence <= 999999;
     }
 
     match /uploads/{uploadId} {

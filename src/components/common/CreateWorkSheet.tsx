@@ -45,7 +45,7 @@ export function CreateWorkSheet({
             onClick={close}
             className="flex min-h-[3.25rem] items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-muted)]/30 px-4 py-3 active:bg-[var(--color-muted)]"
           >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-secondary)] text-[var(--color-primary)]">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-nav-active-bg)] text-[var(--color-nav-active-fg)]">
               <CheckSquare className="h-5 w-5" aria-hidden />
             </span>
             <span className="min-w-0 text-left">

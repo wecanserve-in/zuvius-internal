@@ -11,9 +11,11 @@ import {
   TaskManagementFilters,
 } from '@/features/tasks/TaskManagementFilters'
 import {
+  OrganisationWorkSubNav,
   OverviewKindToggle,
   PersonalWorkSubNav,
   TaskHubScopeSwitcher,
+  type OrgWorkView,
   type OverviewKind,
   type TaskHubScope,
   type TaskHubTab,
@@ -26,7 +28,9 @@ import {
   isDepartmentAdminOnly,
 } from '@/lib/permissions'
 import {
+  filterProjectsDueTodayScope,
   filterProjectsForPersonalTab,
+  filterTasksDueToday,
   filterTasksForPersonalTab,
   type PersonalWorkTab,
 } from '@/lib/tasks/personalWorkFilters'
@@ -57,12 +61,9 @@ function isPersonalTab(tab: TaskHubTab): boolean {
   return PERSONAL_TABS.includes(tab)
 }
 
-function parseScope(
-  searchParams: URLSearchParams,
-  showOrganisation: boolean,
-  preferOrgScope = false,
-): TaskHubScope | null {
+function parseScope(searchParams: URLSearchParams, showOrganisation: boolean): TaskHubScope {
   const explicit = searchParams.get('scope')
+  if (explicit === 'due') return 'yours'
   if (explicit === 'org' && showOrganisation) return 'org'
   if (explicit === 'yours') return 'yours'
 
@@ -70,20 +71,23 @@ function parseScope(
   if (legacyTab === 'overview' || legacyTab === 'all') {
     if (showOrganisation) return 'org'
   }
+  if (legacyTab === 'today') return 'yours'
   if (legacyTab && isPersonalTab(legacyTab as TaskHubTab)) return 'yours'
 
-  // Members only use Your work (no organisation scope).
-  if (!showOrganisation) return 'yours'
-
-  if (preferOrgScope) return 'org'
-
-  return null
+  return 'yours'
 }
 
 function parsePersonalTab(searchParams: URLSearchParams): TaskHubTab {
   const raw = searchParams.get('tab')
+  if (raw === 'today') return 'today'
   if (raw && isPersonalTab(raw as TaskHubTab)) return raw as TaskHubTab
   return 'mine'
+}
+
+function parseOrgWorkView(searchParams: URLSearchParams): OrgWorkView {
+  if (searchParams.get('view') === 'due-today') return 'dueToday'
+  if (searchParams.get('due') === 'today') return 'dueToday'
+  return 'all'
 }
 
 function parseWorkKind(searchParams: URLSearchParams): OverviewKind {
@@ -102,16 +106,55 @@ export function TasksHubPage() {
 
   const showOrganisation = canViewTasksOverview(profile)
   const deptAdminOnly = Boolean(profile && isDepartmentAdminOnly(profile))
-  const scope = parseScope(searchParams, showOrganisation, deptAdminOnly)
+  const scope = parseScope(searchParams, showOrganisation)
   const personalTab = parsePersonalTab(searchParams)
   const workKind = parseWorkKind(searchParams)
+  const orgWorkView = parseOrgWorkView(searchParams)
 
   const isOrgScope = scope === 'org'
   const isYourScope = scope === 'yours'
+  const isDueTodayView =
+    (isYourScope && personalTab === 'today') ||
+    (isOrgScope && orgWorkView === 'dueToday')
   const orgWideData = isOrgScope && profile && canViewAllTasks(profile)
 
   useEffect(() => {
-    if (!profile || !scope) {
+    const next = new URLSearchParams(searchParams)
+    let changed = false
+
+    if (!next.get('scope')) {
+      next.set('scope', 'yours')
+      changed = true
+    }
+    if (next.get('scope') === 'due') {
+      next.set('scope', 'yours')
+      next.set('tab', 'today')
+      changed = true
+    }
+    if (next.get('due') === 'today') {
+      if (next.get('scope') === 'org') {
+        next.set('view', 'due-today')
+      } else {
+        next.set('scope', 'yours')
+        next.set('tab', 'today')
+      }
+      next.delete('due')
+      changed = true
+    }
+    if (!next.get('tab') && next.get('scope') === 'yours') {
+      next.set('tab', 'mine')
+      changed = true
+    }
+    if (!next.get('kind')) {
+      next.set('kind', 'projects')
+      changed = true
+    }
+
+    if (changed) setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
+
+  useEffect(() => {
+    if (!profile) {
       setTasks([])
       return
     }
@@ -123,11 +166,15 @@ export function TasksHubPage() {
       }
     }
 
-    if (personalTab === 'created') return subscribeTasksCreatedBy(profile.id, setTasks)
-    if (personalTab === 'forwarded') return subscribeForwardedTasks(profile.id, setTasks)
+    if (isYourScope && personalTab === 'created') {
+      return subscribeTasksCreatedBy(profile.id, setTasks)
+    }
+    if (isYourScope && personalTab === 'forwarded') {
+      return subscribeForwardedTasks(profile.id, setTasks)
+    }
 
     return subscribeMyTasks(profile.id, setTasks)
-  }, [profile, scope, personalTab, managedIds.join(',')])
+  }, [profile, scope, personalTab, managedIds.join(','), isOrgScope, isYourScope])
 
   const includeOwnedProjects = isYourScope && personalTab === 'created'
 
@@ -142,7 +189,7 @@ export function TasksHubPage() {
     if (profile && scope) {
       void listOrgTaskMemberCandidates(profile).then(setUsers).catch(() => setUsers([]))
     }
-  }, [profile?.id, scope])
+  }, [profile?.id, scope, isOrgScope])
 
   useEffect(() => {
     const ids = tasks.flatMap((t) => [
@@ -173,7 +220,10 @@ export function TasksHubPage() {
       )
     }
 
-    if (isOrgScope) return applyTaskListFilters(base, filters)
+    if (isOrgScope) base = applyTaskListFilters(base, filters)
+    if (isOrgScope && orgWorkView === 'dueToday') {
+      base = filterTasksDueToday(base)
+    }
     return base
   }, [
     tasks,
@@ -182,6 +232,7 @@ export function TasksHubPage() {
     filters,
     isOrgScope,
     isYourScope,
+    orgWorkView,
     deptAdminOnly,
     managedDeptSet,
   ])
@@ -212,12 +263,16 @@ export function TasksHubPage() {
     if (isOrgScope && filters.departmentId) {
       list = list.filter((p) => p.departmentId === filters.departmentId)
     }
+    if (isOrgScope && orgWorkView === 'dueToday') {
+      list = filterProjectsDueTodayScope(list, taskProjectIds)
+    }
     return list
   }, [
     projects,
     personalTab,
     profile?.id,
     isYourScope,
+    orgWorkView,
     isOrgScope,
     deptAdminOnly,
     managedDeptSet,
@@ -235,11 +290,25 @@ export function TasksHubPage() {
   const deptById = useMemo(() => new Map(departments.map((d) => [d.id, d])), [departments])
 
   const openOrganisation = () => {
-    setSearchParams({ scope: 'org', kind: workKind })
+    const next = new URLSearchParams()
+    next.set('scope', 'org')
+    next.set('kind', workKind)
+    if (personalTab === 'today') next.set('view', 'due-today')
+    setSearchParams(next)
   }
 
   const openYourWork = () => {
-    setSearchParams({ scope: 'yours', tab: personalTab, kind: workKind })
+    const tab: TaskHubTab =
+      orgWorkView === 'dueToday' || personalTab === 'today'
+        ? 'today'
+        : isPersonalTab(personalTab)
+          ? personalTab
+          : 'mine'
+    const next = new URLSearchParams()
+    next.set('scope', 'yours')
+    next.set('tab', tab)
+    next.set('kind', workKind)
+    setSearchParams(next)
   }
 
   const setPersonalTab = (tab: TaskHubTab) => {
@@ -247,6 +316,19 @@ export function TasksHubPage() {
     next.set('scope', 'yours')
     next.set('tab', tab)
     next.set('kind', workKind)
+    next.delete('view')
+    next.delete('due')
+    setSearchParams(next)
+  }
+
+  const setOrgWorkView = (view: OrgWorkView) => {
+    const next = new URLSearchParams(searchParams)
+    next.set('scope', 'org')
+    next.set('kind', workKind)
+    next.delete('tab')
+    if (view === 'dueToday') next.set('view', 'due-today')
+    else next.delete('view')
+    next.delete('due')
     setSearchParams(next)
   }
 
@@ -265,77 +347,48 @@ export function TasksHubPage() {
 
   if (!profile) return null
 
-  const listMode = workKind === 'projects' ? 'projects-only' : 'tasks-only'
+  const listMode = isDueTodayView
+    ? 'split'
+    : workKind === 'projects'
+      ? 'projects-only'
+      : 'tasks-only'
 
   const { standalone, byProjectId } = partitionTasks(filteredTasks)
   const projectRows = buildProjectRows(filteredProjects, byProjectId)
 
-  const hasWork =
-    workKind === 'projects'
-      ? projectRows.length > 0 || (isYourScope && personalTab === 'created' && filteredProjects.length > 0)
+  const hasWork = isDueTodayView
+    ? projectRows.length > 0 || standalone.length > 0
+    : workKind === 'projects'
+      ? projectRows.length > 0 ||
+        (isYourScope && personalTab === 'created' && filteredProjects.length > 0)
       : standalone.length > 0
 
   return (
     <div className="min-w-0 space-y-3">
-      <PageHeader
-        compact
-        title="Tasks"
-        description={
-          scope
-            ? isOrgScope
-              ? deptAdminOnly
-                ? 'Projects and tasks in departments you manage.'
-                : 'Organisation-wide projects and tasks.'
-              : personalTab === 'created'
-              ? 'Work you created — open a project for full progress.'
-              : 'Your assignments and activity.'
-            : 'Choose Organisation or Your work to get started.'
-        }
-        action={
-          canCreateTasks(profile) ? (
-            <div className="hidden sm:block">
-              <CreateWorkMenu />
-            </div>
-          ) : null
-        }
+      <PageHeader compact title="Dashboard" />
+
+      <TaskHubScopeSwitcher
+        scope={scope}
+        showOrganisation={showOrganisation}
+        organisationLabel={deptAdminOnly ? 'Department' : 'Organisation'}
+        onOrganisation={openOrganisation}
+        onYourWork={openYourWork}
       />
 
-      {showOrganisation ? (
-        <TaskHubScopeSwitcher
-          scope={scope}
-          showOrganisation={showOrganisation}
-          organisationLabel={deptAdminOnly ? 'Department' : 'Organisation'}
-          onOrganisation={openOrganisation}
-          onYourWork={openYourWork}
-        />
-      ) : null}
-
-      {!scope && showOrganisation ? (
-        <div className="rounded-md border border-dashed border-[var(--color-border)] px-4 py-16 text-center">
-          <p className="text-sm text-[var(--color-muted-foreground)]">
-            Select <strong>{deptAdminOnly ? 'Department' : 'Organisation'}</strong> or{' '}
-            <strong>Your work</strong> above to load tasks.
-          </p>
-        </div>
-      ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        {!isDueTodayView ? (
+          <OverviewKindToggle value={workKind} onChange={setWorkKind} />
+        ) : null}
+        {canCreateTasks(profile) ? <CreateWorkMenu /> : null}
+      </div>
 
       {isYourScope ? (
-        <>
-          <OverviewKindToggle value={workKind} onChange={setWorkKind} />
-          <PersonalWorkSubNav value={personalTab} onChange={setPersonalTab} />
-        </>
+        <PersonalWorkSubNav value={personalTab} onChange={setPersonalTab} />
       ) : null}
 
       {isOrgScope ? (
         <>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <OverviewKindToggle value={workKind} onChange={setWorkKind} />
-            <p className="text-xs text-[var(--color-muted-foreground)]">
-              {orgWideData
-                ? 'All projects and individual tasks in the organisation.'
-                : 'Projects and tasks in your managed departments.'}
-            </p>
-          </div>
+          <OrganisationWorkSubNav value={orgWorkView} onChange={setOrgWorkView} />
           <TaskManagementFilters
             filters={filters}
             onChange={setFilters}
@@ -345,15 +398,21 @@ export function TasksHubPage() {
         </>
       ) : null}
 
-      {scope && !hasWork ? (
+      {!hasWork ? (
         <EmptyState
           icon={CheckSquare}
-          title={workKind === 'projects' ? 'No projects' : 'No tasks'}
+          title={
+            isDueTodayView
+              ? 'Nothing due today'
+              : workKind === 'projects'
+                ? 'No projects'
+                : 'No tasks'
+          }
           description="Nothing in this list right now."
         />
       ) : null}
 
-      {scope && hasWork ? (
+      {hasWork ? (
         <WorkItemsSplitView
           tasks={filteredTasks}
           projects={filteredProjects}

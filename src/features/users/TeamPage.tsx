@@ -122,7 +122,6 @@ export function TeamPage() {
       <PageHeader
         compact
         title="Team"
-        description="Employees and access"
         action={
           <PageHeaderAction label="Create employee" onClick={() => setFormOpen(true)} />
         }
@@ -198,7 +197,7 @@ export function TeamPage() {
                 ))}
               </select>
             </div>
-            {error ? <p className="text-sm text-red-600">{error}</p> : null}
+            {error ? <p className="text-sm text-danger">{error}</p> : null}
             <div className="flex justify-end gap-2 pt-1">
               <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
                 Cancel
@@ -212,7 +211,7 @@ export function TeamPage() {
       </Dialog>
 
       {success ? <p className="text-sm text-green-700">{success}</p> : null}
-      {listError ? <p className="text-sm text-red-600">{listError}</p> : null}
+      {listError ? <p className="text-sm text-danger">{listError}</p> : null}
 
       <Input
         placeholder="Search employees…"

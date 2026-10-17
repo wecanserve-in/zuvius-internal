@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { TaskEntryFields } from '@/components/tasks/TaskEntryFields'
 import { CreateWorkMenu } from '@/components/common/CreateWorkMenu'
 import { MobileFormFooter } from '@/components/common/MobileFormFooter'
@@ -13,6 +13,7 @@ import { resolveTaskDepartmentForAssignees } from '@/lib/tasks/assignment'
 import { taskFieldsFromBody } from '@/lib/tasks/taskContent'
 import { filterAssigneeCandidates } from '@/lib/tasks/orgDirectory'
 import { taskFormSchema, type TaskFormValues } from '@/lib/validation/task'
+import { useGoBack } from '@/lib/navigation/useGoBack'
 import { listDepartments } from '@/services/departments.service'
 import { formatUploadCallableError } from '@/services/uploads.service'
 import { addTaskToProject, getProject } from '@/services/projects.service'
@@ -37,6 +38,7 @@ export function TaskCreatePage() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [attachments, setAttachments] = useState<File[]>([])
+  const submitLock = useRef(false)
 
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskFormSchema),
@@ -109,9 +111,11 @@ export function TaskCreatePage() {
 
   const deptById = useMemo(() => new Map(departments.map((d) => [d.id, d])), [departments])
   const deptIds = useMemo(() => departments.map((d) => d.id), [departments])
+  const cancelFallback = projectId ? `/projects/${projectId}` : '/'
+  const goBack = useGoBack(cancelFallback)
 
   if (!profile || !canCreateTasks(profile)) {
-    return <Navigate to="/tasks" replace />
+    return <Navigate to="/" replace />
   }
 
   if (projectId && (projectLoading || !projectTasksReady)) {
@@ -121,7 +125,7 @@ export function TaskCreatePage() {
   if (projectId && projectTasksReady && !projectLoading) {
     if (projectError || !project) {
       return (
-        <p className="text-sm text-red-600">{projectError ?? 'Project not found'}</p>
+        <p className="text-sm text-danger">{projectError ?? 'Project not found'}</p>
       )
     }
     if (!canAddTasksToProject(profile, project, projectTasks)) {
@@ -129,10 +133,10 @@ export function TaskCreatePage() {
     }
   }
 
-  const cancelTo = projectId ? `/projects/${projectId}` : '/tasks'
-
   const onSubmit = form.handleSubmit(async (values) => {
+    if (submitLock.current) return
     setError(null)
+    submitLock.current = true
     setSubmitting(true)
     try {
       const { title, description } = taskFieldsFromBody(values.body)
@@ -171,6 +175,7 @@ export function TaskCreatePage() {
       }
     } catch (err) {
       setError(formatUploadCallableError(err))
+      submitLock.current = false
     } finally {
       setSubmitting(false)
     }
@@ -178,15 +183,10 @@ export function TaskCreatePage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="mx-auto w-full min-w-0 max-w-4xl shrink-0 border-b border-[var(--color-border)] bg-[var(--color-background)] px-3 py-3 sm:px-4 md:px-6">
+      <div className="mx-auto w-full min-w-0 max-w-6xl shrink-0 border-b border-[var(--color-border)] bg-[var(--color-background)] px-3 py-3 sm:px-4 md:px-6">
         <PageHeader
           compact
           title={project ? 'Add project task' : 'Create task'}
-          description={
-            project
-              ? `New task in “${project.title}”. Assignees are added to the project.`
-              : 'Individual work item — assign to any active colleague.'
-          }
           action={
             <div className="hidden sm:block">
               <CreateWorkMenu />
@@ -198,10 +198,11 @@ export function TaskCreatePage() {
         <form
           id="create-task-form"
           onSubmit={onSubmit}
-          className="mx-auto w-full min-w-0 max-w-4xl space-y-3 p-3 pb-24 sm:p-4 sm:pb-6 md:px-6"
+          className="mx-auto w-full min-w-0 max-w-6xl space-y-3 p-3 pb-24 sm:p-4 sm:pb-6 md:px-6"
         >
-          <div className="space-y-3 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] p-4">
+          <div className="space-y-2 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] p-3 sm:p-4">
         <TaskEntryFields
+          singleLine
           body={body}
           onBodyChange={(v) => form.setValue('body', v)}
           assigneeIds={assigneeIds}
@@ -219,16 +220,24 @@ export function TaskCreatePage() {
           onAttachmentsChange={setAttachments}
           bodyError={form.formState.errors.body?.message}
           disabled={submitting}
+          actions={
+            <>
+              <Button type="submit" size="sm" className="h-8 shrink-0 px-3" disabled={submitting}>
+                {submitting ? 'Saving…' : project ? 'Add' : 'Create'}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="hidden h-8 shrink-0 px-3 sm:inline-flex"
+                onClick={() => goBack()}
+              >
+                Cancel
+              </Button>
+            </>
+          }
         />
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
-            <div className="hidden flex-wrap gap-2 sm:flex">
-              <Button type="submit" disabled={submitting}>
-                {submitting ? 'Saving…' : project ? 'Add to project' : 'Create task'}
-              </Button>
-              <Button type="button" variant="outline" asChild>
-                <Link to={cancelTo}>Cancel</Link>
-              </Button>
-            </div>
+        {error ? <p className="text-sm text-danger">{error}</p> : null}
           </div>
         </form>
       </div>
@@ -236,8 +245,8 @@ export function TaskCreatePage() {
         <Button type="submit" form="create-task-form" className="min-h-11 flex-1" disabled={submitting}>
           {submitting ? 'Saving…' : project ? 'Add to project' : 'Create task'}
         </Button>
-        <Button type="button" variant="outline" className="min-h-11 shrink-0" asChild>
-          <Link to={cancelTo}>Cancel</Link>
+        <Button type="button" variant="outline" className="min-h-11 shrink-0" onClick={() => goBack()}>
+          Cancel
         </Button>
       </MobileFormFooter>
     </div>

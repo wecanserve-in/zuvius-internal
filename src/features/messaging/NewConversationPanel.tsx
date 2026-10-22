@@ -47,9 +47,12 @@ export function NewConversationPanel({
     })
   }, [users])
 
-  if (!profile) return null
-
-  const otherUsers = directory.filter((u) => u.id !== profile.id && u.isActive)
+  // Hooks must run on every render, so they come before the early return below.
+  const profileId = profile?.id
+  const otherUsers = useMemo(
+    () => directory.filter((u) => u.id !== profileId && u.isActive),
+    [directory, profileId],
+  )
 
   const deptById = useMemo(
     () => new Map(departments.map((d) => [d.id, d.name])),
@@ -71,6 +74,8 @@ export function NewConversationPanel({
       return haystack.includes(q)
     })
   }, [otherUsers, search, deptById])
+
+  if (!profile) return null
 
   const toggleGroupMember = (id: string) => {
     setGroupMemberIds((prev) =>

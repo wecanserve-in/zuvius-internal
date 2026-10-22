@@ -21,6 +21,7 @@ import { syncUserDepartmentChannels } from '@/services/conversations.service'
 import {
   createEmployeeComplete,
   listActiveUsers,
+  listAllUsers,
   syncDepartmentRostersForAdmin,
 } from '@/services/users.service'
 import type { AppUser, Department, UserRole } from '@/types'
@@ -43,6 +44,7 @@ export function TeamPage() {
   const [success, setSuccess] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [formOpen, setFormOpen] = useState(false)
+  const [showInactive, setShowInactive] = useState(false)
 
   const deptName = (id: string) => departments.find((d) => d.id === id)?.name ?? '—'
 
@@ -57,8 +59,8 @@ export function TeamPage() {
     )
   }, [users, search])
 
-  const refreshUsers = () => {
-    void listActiveUsers()
+  const refreshUsers = (includeInactive = showInactive) => {
+    void (includeInactive ? listAllUsers() : listActiveUsers())
       .then(async (data) => {
         setUsers(data)
         setListError(null)
@@ -213,12 +215,25 @@ export function TeamPage() {
       {success ? <p className="text-sm text-green-700">{success}</p> : null}
       {listError ? <p className="text-sm text-danger">{listError}</p> : null}
 
-      <Input
-        placeholder="Search employees…"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full sm:max-w-sm"
-      />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <Input
+          placeholder="Search employees…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full sm:max-w-sm"
+        />
+        <label className="flex items-center gap-2 text-sm text-[var(--color-muted-foreground)]">
+          <input
+            type="checkbox"
+            checked={showInactive}
+            onChange={(e) => {
+              setShowInactive(e.target.checked)
+              refreshUsers(e.target.checked)
+            }}
+          />
+          Show deactivated
+        </label>
+      </div>
 
       <TeamMobileList users={filteredUsers} deptName={deptName} />
 

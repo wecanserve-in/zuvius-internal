@@ -1,6 +1,13 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
 import { connectAuthEmulator, getAuth, type Auth } from 'firebase/auth'
-import { connectFirestoreEmulator, getFirestore, type Firestore } from 'firebase/firestore'
+import {
+  connectFirestoreEmulator,
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  type Firestore,
+} from 'firebase/firestore'
 import { connectFunctionsEmulator, getFunctions, type Functions } from 'firebase/functions'
 import { getMessaging, isSupported, type Messaging } from 'firebase/messaging'
 
@@ -30,7 +37,23 @@ assertConfig()
 
 export const app: FirebaseApp = initializeApp(firebaseConfig)
 export const auth: Auth = getAuth(app)
-export const db: Firestore = getFirestore(app)
+
+/**
+ * Keep Firestore data in the browser (IndexedDB) so reloads and reconnects only
+ * download changes instead of re-reading everything. Falls back to memory cache.
+ */
+function createDb(): Firestore {
+  if (typeof indexedDB === 'undefined') return getFirestore(app)
+  try {
+    return initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    })
+  } catch {
+    return getFirestore(app)
+  }
+}
+
+export const db: Firestore = createDb()
 const functionsRegion =
   import.meta.env.VITE_FIREBASE_FUNCTIONS_REGION ?? 'asia-south1'
 

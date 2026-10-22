@@ -124,10 +124,16 @@ export function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // 0 while the newest message is still being sent (no server time yet).
+  const latestMessageMs =
+    messages[messages.length - 1]?.createdAt?.toMillis() ?? 0
+
   useEffect(() => {
-    if (!profile || !conversationId || messages.length === 0) return
-    void markConversationRead(profile, conversationId)
-  }, [profile, conversationId, messages])
+    if (!profile || !conversation || latestMessageMs === 0) return
+    markConversationRead(profile, conversation, latestMessageMs).catch(() => {
+      // read receipts are best-effort
+    })
+  }, [profile, conversation, latestMessageMs])
 
   useEffect(() => {
     let cancelled = false

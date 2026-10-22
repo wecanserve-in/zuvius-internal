@@ -36,8 +36,36 @@ import type { AppUser, UserRole } from '@/types'
 const usersCol = collection(db, 'users')
 const conversationsCol = collection(db, 'conversations')
 
+/**
+ * In-memory profile cache shared by the whole app. Chat and task screens ask for
+ * the same people over and over; without this every new message re-read every
+ * member profile from Firestore.
+ */
+const USER_CACHE_TTL_MS = 5 * 60 * 1000
+const userCache = new Map<string, { user: AppUser | null; at: number }>()
+const userInflight = new Map<string, Promise<AppUser | null>>()
+
+function cacheUser(id: string, user: AppUser | null): void {
+  userCache.set(id, { user, at: Date.now() })
+}
+
+function cachedUser(id: string): { user: AppUser | null } | undefined {
+  const hit = userCache.get(id)
+  if (!hit) return undefined
+  if (Date.now() - hit.at > USER_CACHE_TTL_MS) {
+    userCache.delete(id)
+    return undefined
+  }
+  return hit
+}
+
+/** Drop a profile from the cache after it was edited. */
+export function invalidateCachedUser(userId: string): void {
+  userCache.delete(userId)
+}
+
 function mapUser(id: string, data: Record<string, unknown>): AppUser {
-  return {
+  const user: AppUser = {
     id,
     displayName: String(data.displayName ?? ''),
     email: String(data.email ?? ''),
@@ -52,6 +80,8 @@ function mapUser(id: string, data: Record<string, unknown>): AppUser {
     createdAt: data.createdAt as AppUser['createdAt'],
     updatedAt: data.updatedAt as AppUser['updatedAt'],
   }
+  cacheUser(id, user)
+  return user
 }
 
 export async function getUserById(userId: string): Promise<AppUser | null> {
@@ -60,21 +90,37 @@ export async function getUserById(userId: string): Promise<AppUser | null> {
   return mapUser(snap.id, snap.data())
 }
 
-/** Loads profiles by id (works when a full user list query is not allowed). */
+/** Loads profiles by id (works when a full user list query is not allowed). Uses the shared cache. */
 export async function loadUsersByIds(
   userIds: string[],
   existing: Map<string, AppUser> = new Map(),
 ): Promise<Map<string, AppUser>> {
   const next = new Map(existing)
-  const missing = [...new Set(userIds)].filter((id) => !next.has(id))
+  const missing = [...new Set(userIds)].filter((id) => id && !next.has(id))
   await Promise.all(
     missing.map(async (id) => {
-      try {
-        const user = await getUserById(id)
-        if (user) next.set(id, user)
-      } catch {
-        // Profile not readable for this actor (e.g. cross-department).
+      const hit = cachedUser(id)
+      if (hit) {
+        if (hit.user) next.set(id, hit.user)
+        return
       }
+      let pending = userInflight.get(id)
+      if (!pending) {
+        pending = getUserById(id)
+          .then((user) => {
+            if (!user) cacheUser(id, null)
+            return user
+          })
+          .catch(() => {
+            // Profile not readable for this actor (e.g. cross-department) — don't retry for a while.
+            cacheUser(id, null)
+            return null
+          })
+          .finally(() => userInflight.delete(id))
+        userInflight.set(id, pending)
+      }
+      const user = await pending
+      if (user) next.set(id, user)
     }),
   )
   return next
@@ -111,6 +157,12 @@ export async function listActiveUsers(): Promise<AppUser[]> {
   return snap.docs
     .map((d) => mapUser(d.id, d.data()))
     .filter((u) => u.isActive)
+}
+
+/** Admin directory including deactivated accounts (Team page "Show deactivated"). */
+export async function listAllUsers(): Promise<AppUser[]> {
+  const snap = await getDocs(usersCol)
+  return snap.docs.map((d) => mapUser(d.id, d.data()))
 }
 
 /** Everyone an employee can start a 1:1 with (company directory). */
@@ -465,6 +517,33 @@ export async function createEmployeeComplete(
   }
 }
 
+/**
+ * Admin turns an employee's access off or back on. A deactivated person is signed out
+ * of the app (ProtectedRoute) and disappears from assignee/chat pickers.
+ */
+export async function setEmployeeActive(
+  actor: AppUser,
+  targetUserId: string,
+  active: boolean,
+): Promise<void> {
+  if (!canManageUsers(actor)) {
+    throw new Error('You do not have permission to change employee access')
+  }
+  if (actor.id === targetUserId) {
+    throw new Error('You cannot deactivate your own account')
+  }
+  const target = await getUserById(targetUserId)
+  if (!target) throw new Error('Employee not found')
+  if (target.role === 'super_admin' && actor.role !== 'super_admin') {
+    throw new Error('Only super admins can change super admin accounts')
+  }
+  await updateDoc(doc(db, 'users', targetUserId), {
+    isActive: active,
+    updatedAt: serverTimestamp(),
+  })
+  invalidateCachedUser(targetUserId)
+}
+
 export interface UpdateEmployeeProfileInput {
   role: UserRole
   departmentIds: string[]
@@ -501,6 +580,7 @@ export async function updateEmployeeProfile(
   const prevRole = target.role
   const nextRole = input.role
 
+  invalidateCachedUser(targetUserId)
   await updateDoc(doc(db, 'users', targetUserId), {
     role: nextRole,
     departmentIds: nextDeptIds,
@@ -540,6 +620,7 @@ export async function setProfilePhotoUploadId(
   objectKey: string,
   fileUrl?: string,
 ): Promise<void> {
+  invalidateCachedUser(userId)
   await updateDoc(doc(db, 'users', userId), {
     photoUploadId: uploadId,
     photoObjectKey: objectKey,

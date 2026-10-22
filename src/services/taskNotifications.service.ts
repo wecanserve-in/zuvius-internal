@@ -1,4 +1,4 @@
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
+import { addDoc, collection, doc, serverTimestamp, writeBatch } from 'firebase/firestore'
 import { db } from '@/lib/firebase/config'
 import { hasMinRole } from '@/lib/permissions'
 import { listUsersByDepartment } from '@/services/users.service'
@@ -19,6 +19,33 @@ async function completionRecipientIds(task: Task, completedById: string): Promis
     }
   }
   return Array.from(ids)
+}
+
+/**
+ * New task: tell each assignee (runs in the browser — there are no Cloud Functions on Spark).
+ * One batched write for all assignees.
+ */
+export async function notifyTaskAssigned(
+  creator: AppUser,
+  task: Pick<Task, 'id' | 'title'>,
+  assigneeIds: string[],
+): Promise<void> {
+  const recipients = [...new Set(assigneeIds)].filter((id) => id && id !== creator.id)
+  if (recipients.length === 0) return
+  const batch = writeBatch(db)
+  for (const recipientId of recipients) {
+    batch.set(doc(collection(db, 'notifications')), {
+      recipientId,
+      type: 'task_assigned',
+      title: 'New task assigned',
+      body: `${creator.displayName} assigned you "${task.title}".`,
+      entityType: 'task',
+      entityId: task.id,
+      readAt: null,
+      createdAt: serverTimestamp(),
+    })
+  }
+  await batch.commit()
 }
 
 export async function notifyTaskHandover(

@@ -138,7 +138,7 @@ export function activityLabel(kind: TaskHistoryEventKind): string {
 
 const STATUS_COLORS: Record<TaskStatus, string> = {
   todo: '#5f6368',
-  in_progress: '#477a60',
+  in_progress: '#4f46e5',
   completed: '#188038',
   needs_revision: '#b06000',
   cancelled: '#9aa0a6',

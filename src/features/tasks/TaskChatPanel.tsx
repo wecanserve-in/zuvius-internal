@@ -61,10 +61,16 @@ export function TaskChatPanel({
     return subscribeMessages(conversationId, setMessages)
   }, [conversationId, open])
 
+  // 0 while the newest message is still being sent (no server time yet).
+  const latestMessageMs =
+    messages[messages.length - 1]?.createdAt?.toMillis() ?? 0
+
   useEffect(() => {
-    if (!conversationId || !open) return
-    void markConversationRead(profile, conversationId)
-  }, [conversationId, open, profile.id, messages.length])
+    if (!conversation || !open || latestMessageMs === 0) return
+    markConversationRead(profile, conversation, latestMessageMs).catch(() => {
+      // read receipts are best-effort
+    })
+  }, [conversation, open, profile, latestMessageMs])
 
   useEffect(() => {
     const ids = [...new Set(messages.map((m) => m.senderId))]

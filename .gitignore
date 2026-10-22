@@ -28,3 +28,9 @@ functions/.env.*
 *.njsproj
 *.sln
 *.sw?
+
+# Playwright
+e2e-report/
+e2e-results/
+e2e-dist/
+backups/

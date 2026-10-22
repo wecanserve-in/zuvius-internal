@@ -1,7 +1,9 @@
 import {
   collection,
   doc,
+  limit,
   onSnapshot,
+  orderBy,
   query,
   updateDoc,
   where,
@@ -28,25 +30,62 @@ function mapNotification(id: string, data: Record<string, unknown>): AppNotifica
   }
 }
 
+/** Only the newest notifications are loaded — older history is never re-downloaded. */
+export const NOTIFICATION_PAGE_SIZE = 100
+
+function sortNewestFirst(items: AppNotification[]): AppNotification[] {
+  return items.sort((a, b) => {
+    const aMs = a.createdAt?.toMillis() ?? Number.MAX_SAFE_INTEGER
+    const bMs = b.createdAt?.toMillis() ?? Number.MAX_SAFE_INTEGER
+    return bMs - aMs
+  })
+}
+
+function isMissingIndexError(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    (err as { code?: string }).code === 'failed-precondition'
+  )
+}
+
 export function subscribeNotifications(
   userId: string,
   onData: (items: AppNotification[]) => void,
   onError?: (error: Error) => void,
 ): Unsubscribe {
-  const q = query(notificationsCol, where('recipientId', '==', userId))
-  return onSnapshot(
-    q,
-    (snap) => {
-      const items = snap.docs.map((d) => mapNotification(d.id, d.data()))
-      items.sort((a, b) => {
-        const aMs = a.createdAt?.toMillis() ?? 0
-        const bMs = b.createdAt?.toMillis() ?? 0
-        return bMs - aMs
-      })
-      onData(items)
-    },
-    (err) => onError?.(err instanceof Error ? err : new Error(String(err))),
+  const handle = (docs: { id: string; data: () => Record<string, unknown> }[]) =>
+    onData(sortNewestFirst(docs.map((d) => mapNotification(d.id, d.data()))).slice(0, NOTIFICATION_PAGE_SIZE))
+  const reportError = (err: unknown) =>
+    onError?.(err instanceof Error ? err : new Error(String(err)))
+
+  const limited = query(
+    notificationsCol,
+    where('recipientId', '==', userId),
+    orderBy('createdAt', 'desc'),
+    limit(NOTIFICATION_PAGE_SIZE),
   )
+
+  let unsub: Unsubscribe = onSnapshot(
+    limited,
+    (snap) => handle(snap.docs),
+    (err) => {
+      if (!isMissingIndexError(err)) {
+        reportError(err)
+        return
+      }
+      // Index (recipientId + createdAt desc) not deployed yet — fall back to the full list.
+      console.warn(
+        'notifications: composite index missing, loading full history. Run `firebase deploy --only firestore:indexes`.',
+      )
+      unsub = onSnapshot(
+        query(notificationsCol, where('recipientId', '==', userId)),
+        (snap) => handle(snap.docs),
+        reportError,
+      )
+    },
+  )
+  return () => unsub()
 }
 
 export async function markNotificationRead(notificationId: string): Promise<void> {

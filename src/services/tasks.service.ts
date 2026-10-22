@@ -39,7 +39,11 @@ import {
   canDeleteTask,
 } from '@/lib/permissions'
 import { getUserById } from '@/services/users.service'
-import { notifyTaskAssigneeCompleted, notifyTaskHandover } from '@/services/taskNotifications.service'
+import {
+  notifyTaskAssigned,
+  notifyTaskAssigneeCompleted,
+  notifyTaskHandover,
+} from '@/services/taskNotifications.service'
 import { postTaskCreatedChatEvents, postTaskHandoverChatEvents } from '@/services/taskChat.service'
 import { uploadFilesForNewTask } from '@/services/uploads.service'
 import {
@@ -207,6 +211,12 @@ export async function createTask(
     } catch (err) {
       console.error('task side effects (history/chat) failed', err)
     }
+  }
+
+  try {
+    await notifyTaskAssigned(actor, { id: taskRef.id, title: input.title }, input.assigneeIds)
+  } catch (err) {
+    console.error('task assigned notification failed', err)
   }
 
   return taskRef.id
@@ -642,6 +652,8 @@ export async function forwardTask(
   if (!newUser) throw new Error('Recipient not found')
 
   let alreadyHandled = false
+  /** Task as it is right after the handover (re-reading can return a stale cached copy). */
+  let forwarded: Task | null = null
   try {
   await runTransaction(db, async (tx) => {
     const taskRef = doc(db, 'tasks', taskId)
@@ -694,6 +706,13 @@ export async function forwardTask(
       status: task.status === 'todo' ? 'in_progress' : task.status,
       updatedAt: serverTimestamp(),
     })
+    forwarded = {
+      ...task,
+      assigneeIds: nextAssigneeIds,
+      formerAssigneeIds: former,
+      forwardedByIds: forwardedBy,
+      status: task.status === 'todo' ? 'in_progress' : task.status,
+    }
 
     tx.set(doc(db, 'tasks', taskId, 'assignees', newAssigneeId), {
       status: 'todo',
@@ -726,7 +745,7 @@ export async function forwardTask(
 
   if (alreadyHandled) return
 
-  const refreshed = await getTask(taskId)
+  const refreshed = forwarded as Task | null
   if (!refreshed) return
 
   if (refreshed.projectId) {

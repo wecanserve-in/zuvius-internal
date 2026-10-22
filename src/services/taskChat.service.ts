@@ -1,4 +1,5 @@
 import {
+  arrayUnion,
   doc,
   getDoc,
   serverTimestamp,
@@ -60,8 +61,20 @@ export async function ensureTaskGroupConversation(
   }
 
   const ref = doc(db, 'conversations', conversationId)
-  const snap = await getDoc(ref)
   const title = task.title?.trim() || 'Task chat'
+  let snap
+  try {
+    snap = await getDoc(ref)
+  } catch (err) {
+    // Not in the chat yet (e.g. task was forwarded to me before this fix):
+    // join it — the rules allow anyone who can read the task to add themselves.
+    if ((err as { code?: string }).code !== 'permission-denied') throw err
+    await updateDoc(ref, {
+      memberIds: arrayUnion(actor.id),
+      updatedAt: serverTimestamp(),
+    })
+    return conversationId
+  }
 
   if (!snap.exists()) {
     await setDoc(ref, {

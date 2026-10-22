@@ -52,7 +52,7 @@ export function TaskQuickCompleteButton({
         'inline-flex shrink-0 items-center justify-center rounded-full',
         dim,
         'border-2 border-[var(--color-primary)]/35 bg-[var(--color-card)] text-[var(--color-primary)]',
-        'shadow-[0_1px_2px_rgba(26,46,36,0.06)]',
+        'shadow-[0_1px_2px_rgba(30,27,58,0.06)]',
         'transition-colors hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-[var(--color-primary-foreground)]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/35 focus-visible:ring-offset-1',
         error && 'border-danger/50 text-danger hover:border-danger hover:bg-danger/10 hover:text-danger',

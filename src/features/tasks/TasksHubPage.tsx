@@ -91,7 +91,8 @@ function parseOrgWorkView(searchParams: URLSearchParams): OrgWorkView {
 }
 
 function parseWorkKind(searchParams: URLSearchParams): OverviewKind {
-  return searchParams.get('kind') === 'tasks' ? 'tasks' : 'projects'
+  // Tasks first: assigned work must be visible the moment someone opens the app.
+  return searchParams.get('kind') === 'projects' ? 'projects' : 'tasks'
 }
 
 export function TasksHubPage() {
@@ -146,7 +147,7 @@ export function TasksHubPage() {
       changed = true
     }
     if (!next.get('kind')) {
-      next.set('kind', 'projects')
+      next.set('kind', 'tasks')
       changed = true
     }
 

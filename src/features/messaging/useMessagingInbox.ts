@@ -45,15 +45,26 @@ export function useMessagingInbox(profile: AppUser | null | undefined) {
 
   useEffect(() => {
     if (!profile || conversations.length === 0) return
+    let cancelled = false
     void (async () => {
-      const next: Record<string, boolean> = {}
-      for (const c of conversations) {
-        if (!c.lastMessageAt) continue
-        const readMs = await getMyLastReadMs(c.id, profile.id)
-        next[c.id] = c.lastMessageAt.toMillis() > readMs
-      }
-      setUnreadById(next)
+      // Last-read times are cached per session, so this only hits Firestore
+      // the first time each chat is seen — not on every new message.
+      const entries = await Promise.all(
+        conversations.map(async (c): Promise<[string, boolean]> => {
+          if (!c.lastMessageAt) return [c.id, false]
+          try {
+            const readMs = await getMyLastReadMs(c.id, profile.id)
+            return [c.id, c.lastMessageAt.toMillis() > readMs]
+          } catch {
+            return [c.id, false]
+          }
+        }),
+      )
+      if (!cancelled) setUnreadById(Object.fromEntries(entries))
     })()
+    return () => {
+      cancelled = true
+    }
   }, [profile?.id, conversations])
 
   const grouped = useMemo(() => {

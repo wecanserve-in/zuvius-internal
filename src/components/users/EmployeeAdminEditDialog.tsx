@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { canChangeRole, formatUserRole } from '@/lib/permissions'
-import { updateEmployeeProfile } from '@/services/users.service'
+import { setEmployeeActive, updateEmployeeProfile } from '@/services/users.service'
 import type { AppUser, Department, UserRole } from '@/types'
 
 const ROLES: UserRole[] = ['member', 'department_admin', 'admin', 'super_admin']
@@ -32,6 +32,7 @@ export function EmployeeAdminEditDialog({
   const [role, setRole] = useState<UserRole>(employee.role)
   const [departmentId, setDepartmentId] = useState(employee.departmentIds[0] ?? '')
   const [saving, setSaving] = useState(false)
+  const [togglingAccess, setTogglingAccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -63,6 +64,25 @@ export function EmployeeAdminEditDialog({
       setError(err instanceof Error ? err.message : 'Could not save changes')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleToggleAccess = async () => {
+    const next = !employee.isActive
+    const question = next
+      ? `Reactivate ${employee.displayName}? They will be able to sign in again.`
+      : `Deactivate ${employee.displayName}? They will be signed out and can no longer use the app. You can reactivate them later.`
+    if (!window.confirm(question)) return
+    setError(null)
+    setTogglingAccess(true)
+    try {
+      await setEmployeeActive(actor, employee.id, next)
+      onSaved({ ...employee, isActive: next })
+      onOpenChange(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not change access')
+    } finally {
+      setTogglingAccess(false)
     }
   }
 
@@ -111,6 +131,33 @@ export function EmployeeAdminEditDialog({
                 <option key={d.id} value={d.id}>{d.name}</option>
               ))}
             </select>
+          </div>
+          <div className="space-y-2 rounded-md border border-[var(--color-border)] p-3">
+            <p className="text-sm font-medium">
+              Account access:{' '}
+              <span className={employee.isActive ? 'text-success' : 'text-danger'}>
+                {employee.isActive ? 'Active' : 'Deactivated'}
+              </span>
+            </p>
+            <p className="text-xs text-[var(--color-muted-foreground)]">
+              {employee.isActive
+                ? 'Use this when someone leaves. Their tasks and messages stay; they just can no longer sign in.'
+                : 'This person cannot sign in. Reactivate to restore access.'}
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className={employee.isActive ? 'text-danger' : undefined}
+              disabled={togglingAccess || saving}
+              onClick={() => void handleToggleAccess()}
+            >
+              {togglingAccess
+                ? 'Updating…'
+                : employee.isActive
+                  ? 'Deactivate employee'
+                  : 'Reactivate employee'}
+            </Button>
           </div>
           {error ? <p className="text-sm text-danger">{error}</p> : null}
           <div className="flex justify-end gap-2 pt-1">

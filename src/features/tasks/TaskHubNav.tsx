@@ -178,18 +178,6 @@ export function OverviewKindToggle({
     <div className="flex w-full max-w-xs gap-1 rounded-md border border-[var(--color-border)] p-0.5 sm:w-fit sm:max-w-none">
       <button
         type="button"
-        onClick={() => onChange('projects')}
-        className={cn(
-          'rounded px-3 py-1 text-xs font-medium transition-colors',
-          value === 'projects'
-            ? 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)]'
-            : 'text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]/50',
-        )}
-      >
-        Projects
-      </button>
-      <button
-        type="button"
         onClick={() => onChange('tasks')}
         className={cn(
           'rounded px-3 py-1 text-xs font-medium transition-colors',
@@ -199,6 +187,18 @@ export function OverviewKindToggle({
         )}
       >
         Tasks
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('projects')}
+        className={cn(
+          'rounded px-3 py-1 text-xs font-medium transition-colors',
+          value === 'projects'
+            ? 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)]'
+            : 'text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]/50',
+        )}
+      >
+        Projects
       </button>
     </div>
   )

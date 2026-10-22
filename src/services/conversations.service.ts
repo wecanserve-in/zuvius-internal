@@ -101,18 +101,40 @@ export function subscribeInbox(
   return subscribeConversations(actor.id, onData)
 }
 
+/**
+ * My own "last read" time per conversation, kept for the browser session.
+ * Only this user writes their read marker, so after the first fetch we can
+ * answer "is this chat unread?" without asking Firestore again.
+ */
+const myLastReadMsCache = new Map<string, number>()
+
+function readCacheKey(conversationId: string, userId: string): string {
+  return `${userId}:${conversationId}`
+}
+
+/** Cached last-read time, or undefined if this session has not loaded it yet. */
+export function peekMyLastReadMs(conversationId: string, userId: string): number | undefined {
+  return myLastReadMsCache.get(readCacheKey(conversationId, userId))
+}
+
 export async function getMyLastReadMs(
   conversationId: string,
   userId: string,
 ): Promise<number> {
+  const cached = peekMyLastReadMs(conversationId, userId)
+  if (cached !== undefined) return cached
   const snap = await getDoc(doc(db, 'conversations', conversationId, 'reads', userId))
-  if (!snap.exists()) return 0
-  const lastReadAt = snap.data().lastReadAt
+  let ms = 0
+  const lastReadAt = snap.exists() ? snap.data().lastReadAt : undefined
   if (lastReadAt && typeof lastReadAt.toMillis === 'function') {
-    return lastReadAt.toMillis()
+    ms = lastReadAt.toMillis()
   }
-  return 0
+  myLastReadMsCache.set(readCacheKey(conversationId, userId), ms)
+  return ms
 }
+
+/** Newest message time I already sent a read marker for (avoids duplicate writes). */
+const lastMarkedMessageMs = new Map<string, number>()
 
 export function subscribeConversation(
   conversationId: string,
@@ -172,20 +194,36 @@ export function subscribeReadReceipts(
   })
 }
 
+/**
+ * Mark a chat as read. Skips the write when nothing newer than my last read
+ * arrived, and when I'm not a member (admins browsing other chats).
+ */
 export async function markConversationRead(
   actor: AppUser,
-  conversationId: string,
+  conversation: Pick<Conversation, 'id' | 'memberIds'>,
+  latestMessageMs?: number,
 ): Promise<void> {
-  const convoSnap = await getDoc(doc(db, 'conversations', conversationId))
-  if (!convoSnap.exists()) return
-  const convo = mapConversation(convoSnap.id, convoSnap.data())
-  if (!canAccessConversation(actor, convo.memberIds)) return
+  if (!conversation.memberIds.includes(actor.id)) return
+  if (!canAccessConversation(actor, conversation.memberIds)) return
+
+  const key = readCacheKey(conversation.id, actor.id)
+  const alreadyMarked = lastMarkedMessageMs.get(key)
+  if (
+    alreadyMarked !== undefined &&
+    latestMessageMs !== undefined &&
+    latestMessageMs <= alreadyMarked
+  ) {
+    return
+  }
+  if (latestMessageMs !== undefined) lastMarkedMessageMs.set(key, latestMessageMs)
 
   await setDoc(
-    doc(db, 'conversations', conversationId, 'reads', actor.id),
+    doc(db, 'conversations', conversation.id, 'reads', actor.id),
     { lastReadAt: serverTimestamp() },
     { merge: true },
   )
+  // Re-read the server time once next time the inbox asks (no clock-skew guessing).
+  myLastReadMsCache.delete(key)
 }
 
 export function subscribeMessages(

@@ -511,31 +511,47 @@ service cloud.firestore {
       allow update: if isActiveUser()
         && resource.data.recipientId == request.auth.uid
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(['readAt']);
+      // Task notifications: the task must exist and the sender must be the one who caused the event.
+      function validTaskNotification() {
+        let n = request.resource.data;
+        let taskPath = /databases/$(database)/documents/tasks/$(n.entityId);
+        return n.entityType == 'task'
+          && n.entityId is string
+          && exists(taskPath)
+          && (
+            (n.type == 'task_completed'
+              && exists(/databases/$(database)/documents/tasks/$(n.entityId)/assignees/$(request.auth.uid))
+              && get(/databases/$(database)/documents/tasks/$(n.entityId)/assignees/$(request.auth.uid)).data.status == 'completed')
+            || (n.type in ['task_forwarded', 'task_reassigned']
+              && n.handoverKey is string
+              && exists(/databases/$(database)/documents/tasks/$(n.entityId)/history/$(('forward-' + n.handoverKey)))
+              && get(/databases/$(database)/documents/tasks/$(n.entityId)/history/$(('forward-' + n.handoverKey))).data.actorId == request.auth.uid)
+            || (n.type == 'task_assigned'
+              && get(taskPath).data.createdBy == request.auth.uid
+              && n.recipientId in get(taskPath).data.assigneeIds)
+          );
+      }
+
+      // Chat notifications: sender and recipient must both be in the conversation.
+      function validConversationNotification() {
+        let n = request.resource.data;
+        let convoPath = /databases/$(database)/documents/conversations/$(n.entityId);
+        return n.entityType == 'conversation'
+          && n.type in ['message_direct', 'message_group']
+          && n.entityId is string
+          && exists(convoPath)
+          && request.auth.uid in get(convoPath).data.memberIds
+          && n.recipientId in get(convoPath).data.memberIds;
+      }
+
       allow create: if isActiveUser()
+        && request.resource.data.recipientId is string
         && request.resource.data.recipientId != request.auth.uid
-        && request.resource.data.entityType == 'task'
         && request.resource.data.readAt == null
         && request.resource.data.createdAt == request.time
         && request.resource.data.title is string
         && request.resource.data.body is string
-        && exists(/databases/$(database)/documents/tasks/$(request.resource.data.entityId))
-        && (
-          (request.resource.data.type == 'task_completed'
-            && exists(/databases/$(database)/documents/tasks/$(request.resource.data.entityId)/assignees/$(request.auth.uid))
-            && get(/databases/$(database)/documents/tasks/$(request.resource.data.entityId)/assignees/$(request.auth.uid)).data.status == 'completed')
-          || (request.resource.data.type in ['task_forwarded', 'task_reassigned']
-            && request.resource.data.handoverKey is string
-            && exists(/databases/$(database)/documents/tasks/$(request.resource.data.entityId)/history/$(('forward-' + request.resource.data.handoverKey)))
-            && get(/databases/$(database)/documents/tasks/$(request.resource.data.entityId)/history/$(('forward-' + request.resource.data.handoverKey))).data.actorId == request.auth.uid)
-          || (request.resource.data.type == 'task_assigned'
-            && exists(/databases/$(database)/documents/tasks/$(request.resource.data.entityId))
-            && request.auth.uid in get(/databases/$(database)/documents/tasks/$(request.resource.data.entityId)).data.assigneeIds)
-          || (request.resource.data.entityType == 'conversation'
-            && request.resource.data.type in ['message_direct', 'message_group']
-            && request.resource.data.entityId is string
-            && exists(/databases/$(database)/documents/conversations/$(request.resource.data.entityId))
-            && request.auth.uid in get(/databases/$(database)/documents/conversations/$(request.resource.data.entityId)).data.memberIds)
-        );
+        && (validTaskNotification() || validConversationNotification());
       allow delete: if false;
     }
 

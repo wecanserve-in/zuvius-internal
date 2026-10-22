@@ -46,7 +46,13 @@ export function MemberDashboard() {
         }
       />
 
-      <TaskTable tasks={myOpen} usersById={usersById} compact showAssignee={false} />
+      <TaskTable
+        tasks={myOpen}
+        usersById={usersById}
+        compact
+        showAssignee={false}
+        quickCompleteActor={profile}
+      />
 
       <p className="text-sm text-[var(--color-muted-foreground)]">
         Projects and tasks you created are under{' '}

@@ -14,6 +14,7 @@ export function WorkItemsSplitView({
   management = false,
   compact = false,
   mode = 'split',
+  quickCompleteActor,
 }: {
   tasks: Task[]
   projects: Project[]
@@ -22,6 +23,7 @@ export function WorkItemsSplitView({
   management?: boolean
   compact?: boolean
   mode?: WorkViewMode
+  quickCompleteActor?: AppUser | null
 }) {
   const { standalone, byProjectId } = partitionTasks(tasks)
   const projectRows = buildProjectRows(projects, byProjectId)
@@ -63,6 +65,7 @@ export function WorkItemsSplitView({
           deptById={deptById}
           management={management}
           compact={compact}
+          quickCompleteActor={quickCompleteActor}
         />
       </section>
     )
@@ -92,6 +95,7 @@ export function WorkItemsSplitView({
             deptById={deptById}
             management={management}
             compact={compact}
+            quickCompleteActor={quickCompleteActor}
           />
         </section>
       ) : null}

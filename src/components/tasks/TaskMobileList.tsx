@@ -1,5 +1,6 @@
 import { format } from 'date-fns'
 import { ChevronRight } from 'lucide-react'
+import { TaskQuickCompleteButton } from '@/components/tasks/TaskQuickCompleteButton'
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
@@ -21,12 +22,14 @@ export function TaskMobileList({
   deptById,
   management = false,
   showAssignee = true,
+  quickCompleteActor,
 }: {
   tasks: Task[]
   usersById?: Map<string, AppUser>
   deptById?: Map<string, Department>
   management?: boolean
   showAssignee?: boolean
+  quickCompleteActor?: AppUser | null
 }) {
   const name = (id: string) => usersById?.get(id)?.displayName ?? '—'
   const assigneeDept = (task: Task) => {
@@ -53,14 +56,24 @@ export function TaskMobileList({
         const overdue = isTaskOverdue(task)
         return (
           <li key={task.id}>
-            <Link
-              to={`/tasks/${task.id}`}
+            <div
               className={cn(
-                'flex items-start gap-2 px-3 py-3 active:bg-[var(--color-muted)]',
+                'flex items-center gap-3 px-3 py-3',
                 overdueTaskSurfaceClass(overdue),
               )}
             >
-              <div className="min-w-0 flex-1 space-y-1.5">
+              {quickCompleteActor ? (
+                <TaskQuickCompleteButton
+                  task={task}
+                  actor={quickCompleteActor}
+                  size="md"
+                />
+              ) : null}
+              <Link
+                to={`/tasks/${task.id}`}
+                className="flex min-w-0 flex-1 items-center gap-2 active:opacity-90"
+              >
+                <div className="min-w-0 flex-1 space-y-1.5">
                 {task.businessTaskId ? (
                   <p className="font-mono text-[10px] text-[var(--color-muted-foreground)]">
                     {task.businessTaskId}
@@ -105,9 +118,13 @@ export function TaskMobileList({
                     {task.assigneeIds.map((id) => name(id)).join(', ')}
                   </p>
                 ) : null}
-              </div>
-              <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-[var(--color-muted-foreground)]" aria-hidden />
-            </Link>
+                </div>
+                <ChevronRight
+                  className="h-4 w-4 shrink-0 text-[var(--color-muted-foreground)]"
+                  aria-hidden
+                />
+              </Link>
+            </div>
           </li>
         )
       })}

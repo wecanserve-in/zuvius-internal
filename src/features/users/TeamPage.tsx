@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label'
 import { TeamMobileList } from '@/components/users/TeamMobileList'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useAuth } from '@/features/auth/AuthContext'
-import { canManageUsers, formatUserRole } from '@/lib/permissions'
+import { canEditEmployeeAccount, canManageUsers, formatUserRole } from '@/lib/permissions'
 import { subscribeDepartments } from '@/services/departments.service'
 import { syncUserDepartmentChannels } from '@/services/conversations.service'
 import {
@@ -245,9 +245,16 @@ export function TeamPage() {
               <TableCell className="capitalize">{formatUserRole(u.role)}</TableCell>
               <TableCell>{u.isActive ? 'Active' : 'Inactive'}</TableCell>
               <TableCell className="text-right">
-                <Button variant="ghost" size="sm" asChild>
-                  <Link to={`/team/${u.id}`}>View</Link>
-                </Button>
+                <div className="flex justify-end gap-1">
+                  {profile && canEditEmployeeAccount(profile, u) ? (
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to={`/team/${u.id}?edit=1`}>Edit</Link>
+                    </Button>
+                  ) : null}
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link to={`/team/${u.id}`}>View</Link>
+                  </Button>
+                </div>
               </TableCell>
             </TableRow>
           ))}

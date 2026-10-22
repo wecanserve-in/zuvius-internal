@@ -8,6 +8,7 @@ import { taskDisplayTitle } from '@/lib/tasks/taskContent'
 import { overdueTaskSurfaceClass, sortTasksForDisplay } from '@/lib/tasks/sortTasks'
 import { isTaskOverdue } from '@/services/tasks.service'
 import { TaskMobileList } from '@/components/tasks/TaskMobileList'
+import { TaskQuickCompleteButton } from '@/components/tasks/TaskQuickCompleteButton'
 import type { AppUser, Department, Task } from '@/types'
 
 const priorityVariant: Record<Task['priority'], 'secondary' | 'default' | 'destructive' | 'outline'> = {
@@ -24,6 +25,7 @@ export function TaskTable({
   management = false,
   compact = false,
   showAssignee = true,
+  quickCompleteActor,
 }: {
   tasks: Task[]
   usersById?: Map<string, AppUser>
@@ -31,6 +33,8 @@ export function TaskTable({
   management?: boolean
   compact?: boolean
   showAssignee?: boolean
+  /** When set, assignees see a one-tap complete control on each row. */
+  quickCompleteActor?: AppUser | null
 }) {
   const name = (id: string) => usersById?.get(id)?.displayName ?? '—'
   const assigneeDept = (task: Task) => {
@@ -67,6 +71,7 @@ export function TaskTable({
         deptById={deptById}
         management={management}
         showAssignee={showAssignee}
+        quickCompleteActor={quickCompleteActor}
       />
       <Table
         className={cn('hidden md:table table-fixed', compact ? 'text-xs' : undefined)}
@@ -91,6 +96,14 @@ export function TaskTable({
             <TableHead className={cn('w-[5.5rem]', compact && 'h-8 px-2')}>Status</TableHead>
             {management ? (
               <TableHead className={cn('w-[5rem]', compact && 'h-8 px-2')}>Updated</TableHead>
+            ) : null}
+            {quickCompleteActor ? (
+              <TableHead
+                className={cn('w-11 shrink-0', compact && 'h-8 px-1')}
+                aria-label="Mark complete"
+              >
+                <span className="sr-only">Done</span>
+              </TableHead>
             ) : null}
           </TableRow>
         </TableHeader>
@@ -161,6 +174,17 @@ export function TaskTable({
               {management ? (
                 <TableCell className={cn(cellMuted, cellPad, 'whitespace-nowrap')}>
                   {task.updatedAt ? format(task.updatedAt.toDate(), compact ? 'MMM d' : 'MMM d, HH:mm') : '—'}
+                </TableCell>
+              ) : null}
+              {quickCompleteActor ? (
+                <TableCell className={cn('w-11 shrink-0 align-middle px-1 py-2')}>
+                  <div className="flex items-center justify-center">
+                    <TaskQuickCompleteButton
+                      task={task}
+                      actor={quickCompleteActor}
+                      size={compact ? 'sm' : 'md'}
+                    />
+                  </div>
                 </TableCell>
               ) : null}
             </TableRow>

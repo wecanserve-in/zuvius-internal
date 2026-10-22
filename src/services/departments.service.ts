@@ -258,6 +258,46 @@ export async function addDepartmentAdmin(
   })
 }
 
+export async function removeDepartmentAdmin(
+  actor: AppUser,
+  departmentId: string,
+  userId: string,
+): Promise<void> {
+  if (!canManageDepartments(actor)) return
+  const ref = doc(db, 'departments', departmentId)
+  const snap = await getDoc(ref)
+  if (!snap.exists()) return
+  const adminIds = Array.isArray(snap.data().adminIds)
+    ? snap.data().adminIds.map(String)
+    : []
+  if (!adminIds.includes(userId)) return
+  await updateDoc(ref, {
+    adminIds: adminIds.filter((id: string) => id !== userId),
+    updatedAt: serverTimestamp(),
+  })
+}
+
+export async function removeUserFromDepartmentRoster(
+  actor: AppUser,
+  departmentId: string,
+  userId: string,
+): Promise<void> {
+  if (!canManageDepartments(actor)) {
+    throw new Error('You do not have permission to update department rosters')
+  }
+  const ref = doc(departmentsCol, departmentId)
+  const snap = await getDoc(ref)
+  if (!snap.exists()) return
+  const memberIds = Array.isArray(snap.data().memberIds)
+    ? snap.data().memberIds.map(String)
+    : []
+  if (!memberIds.includes(userId)) return
+  await updateDoc(ref, {
+    memberIds: memberIds.filter((id: string) => id !== userId),
+    updatedAt: serverTimestamp(),
+  })
+}
+
 export async function getDepartment(departmentId: string): Promise<Department | null> {
   const snap = await getDocs(query(departmentsCol))
   const found = snap.docs.find((d) => d.id === departmentId)

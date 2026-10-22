@@ -248,6 +248,17 @@ export function canChangeRole(
   return hasMinRole(actor, 'admin')
 }
 
+/** Admins may edit colleagues; super admin required to edit another super admin. */
+export function canEditEmployeeAccount(
+  actor: AppUser | null | undefined,
+  target: AppUser,
+): boolean {
+  if (!canManageUsers(actor) || !actor) return false
+  if (actor.id === target.id) return false
+  if (target.role === 'super_admin' && actor.role !== 'super_admin') return false
+  return true
+}
+
 export const NAV_ITEMS = [
   { path: '/', label: 'Dashboard', minRole: 'member' as UserRole },
   { path: '/messages', label: 'Messages', minRole: 'member' as UserRole },

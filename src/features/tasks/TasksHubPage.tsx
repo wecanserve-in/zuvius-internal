@@ -353,6 +353,11 @@ export function TasksHubPage() {
       ? 'projects-only'
       : 'tasks-only'
 
+  const quickCompleteActor =
+    isYourScope && personalTab !== 'completed' && personalTab !== 'created'
+      ? profile
+      : null
+
   const { standalone, byProjectId } = partitionTasks(filteredTasks)
   const projectRows = buildProjectRows(filteredProjects, byProjectId)
 
@@ -421,6 +426,7 @@ export function TasksHubPage() {
           management={isOrgScope}
           compact
           mode={listMode}
+          quickCompleteActor={quickCompleteActor}
         />
       ) : null}
     </div>

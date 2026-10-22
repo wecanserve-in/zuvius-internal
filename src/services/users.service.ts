@@ -20,10 +20,16 @@ import {
   isEligibleTaskAssignee,
 } from '@/lib/permissions/forwarding'
 import {
+  refreshDepartmentChannelRoster,
+  syncUserDepartmentChannels,
+} from '@/services/conversations.service'
+import {
   addDepartmentAdmin,
   getDepartmentChannelMemberIds,
   indexUserOnDepartments,
   listDepartments,
+  removeDepartmentAdmin,
+  removeUserFromDepartmentRoster,
 } from '@/services/departments.service'
 import type { AppUser, UserRole } from '@/types'
 
@@ -456,6 +462,75 @@ export async function createEmployeeComplete(
     if (secondaryApp) {
       await deleteApp(secondaryApp).catch(() => undefined)
     }
+  }
+}
+
+export interface UpdateEmployeeProfileInput {
+  role: UserRole
+  departmentIds: string[]
+}
+
+/** Admin updates a colleague's role and department assignment. */
+export async function updateEmployeeProfile(
+  actor: AppUser,
+  targetUserId: string,
+  input: UpdateEmployeeProfileInput,
+): Promise<void> {
+  if (!canManageUsers(actor)) {
+    throw new Error('You do not have permission to update employees')
+  }
+  const target = await getUserById(targetUserId)
+  if (!target) {
+    throw new Error('Employee not found')
+  }
+  if (actor.id === targetUserId) {
+    throw new Error('Use Settings to update your own profile')
+  }
+  if (target.role === 'super_admin' && actor.role !== 'super_admin') {
+    throw new Error('Only super admins can edit super admin accounts')
+  }
+  if (!canChangeRole(actor, input.role)) {
+    throw new Error('You cannot assign this role')
+  }
+  if (!input.departmentIds?.length) {
+    throw new Error('Department is required')
+  }
+
+  const prevDeptIds = [...target.departmentIds]
+  const nextDeptIds = [...input.departmentIds]
+  const prevRole = target.role
+  const nextRole = input.role
+
+  await updateDoc(doc(db, 'users', targetUserId), {
+    role: nextRole,
+    departmentIds: nextDeptIds,
+    updatedAt: serverTimestamp(),
+  })
+
+  const removedDepts = prevDeptIds.filter((id) => !nextDeptIds.includes(id))
+  const addedDepts = nextDeptIds.filter((id) => !prevDeptIds.includes(id))
+
+  for (const departmentId of removedDepts) {
+    await removeUserFromDepartmentRoster(actor, departmentId, targetUserId)
+  }
+  await indexUserOnDepartments(targetUserId, nextDeptIds)
+
+  if (prevRole === 'department_admin') {
+    for (const departmentId of prevDeptIds) {
+      await removeDepartmentAdmin(actor, departmentId, targetUserId)
+    }
+  }
+  if (nextRole === 'department_admin') {
+    for (const departmentId of nextDeptIds) {
+      await addDepartmentAdmin(actor, departmentId, targetUserId)
+    }
+  }
+
+  const departments = await listDepartments()
+  const names = new Map(departments.map((d) => [d.id, d.name]))
+  await syncUserDepartmentChannels(actor, nextDeptIds, names)
+  for (const departmentId of [...removedDepts, ...addedDepts]) {
+    await refreshDepartmentChannelRoster(actor, departmentId, names.get(departmentId))
   }
 }
 

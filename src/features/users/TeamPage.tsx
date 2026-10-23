@@ -13,6 +13,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { DEFAULT_TEMP_PASSWORD } from '@/lib/auth/passwordPolicy'
+import { sendWelcomeEmail } from '@/services/welcomeEmail.service'
 import { TeamMobileList } from '@/components/users/TeamMobileList'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useAuth } from '@/features/auth/AuthContext'
@@ -45,6 +46,19 @@ export function TeamPage() {
   const [search, setSearch] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [showInactive, setShowInactive] = useState(false)
+  const [emailing, setEmailing] = useState<string | null>(null)
+
+  const resendLoginEmail = async (u: AppUser) => {
+    setEmailing(u.id)
+    setError(null)
+    const problem = await sendWelcomeEmail(u.email)
+    setEmailing(null)
+    setSuccess(
+      problem
+        ? `Could not email ${u.displayName} (${problem}).`
+        : `Login email sent to ${u.displayName} (${u.email}).`,
+    )
+  }
 
   const deptName = (id: string) => departments.find((d) => d.id === id)?.name ?? '—'
 
@@ -106,9 +120,16 @@ export function TeamPage() {
       })
       const names = new Map(departments.map((d) => [d.id, d.name]))
       await syncUserDepartmentChannels(profile, departmentIds, names)
-      setSuccess(
-        `${displayName} was created. They sign in with ${email} and the temporary password ${DEFAULT_TEMP_PASSWORD}.`,
-      )
+      const createdName = displayName
+      const createdEmail = email.trim()
+      setSuccess(`${createdName} was created. Sending their login email…`)
+      void sendWelcomeEmail(createdEmail).then((problem) => {
+        setSuccess(
+          problem
+            ? `${createdName} was created, but the login email could not be sent (${problem}). Tell them: sign in with ${createdEmail} and temporary password ${DEFAULT_TEMP_PASSWORD}.`
+            : `${createdName} was created and emailed their login details (${createdEmail}, temporary password ${DEFAULT_TEMP_PASSWORD}).`,
+        )
+      })
       resetForm()
       setFormOpen(false)
       refreshUsers()
@@ -157,7 +178,8 @@ export function TeamPage() {
             <div className="surface-info rounded-md px-3 py-2 text-sm">
               Temporary password: <span className="font-mono font-semibold">{DEFAULT_TEMP_PASSWORD}</span>
               <p className="mt-0.5 text-xs text-[var(--color-muted-foreground)]">
-                They must set their own password the first time they sign in.
+                We email this to them automatically. They must set their own password the first
+                time they sign in.
               </p>
             </div>
             <div className="space-y-2">
@@ -257,6 +279,17 @@ export function TeamPage() {
               <TableCell>{u.isActive ? 'Active' : 'Inactive'}</TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-1">
+                  {u.mustChangePassword && u.isActive ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={emailing === u.id}
+                      title="Email their sign-in link and temporary password again"
+                      onClick={() => void resendLoginEmail(u)}
+                    >
+                      {emailing === u.id ? 'Sending…' : 'Send login email'}
+                    </Button>
+                  ) : null}
                   {profile && canEditEmployeeAccount(profile, u) ? (
                     <Button variant="outline" size="sm" asChild>
                       <Link to={`/team/${u.id}?edit=1`}>Edit</Link>

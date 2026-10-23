@@ -1,0 +1,5 @@
+# Never serve the server-side mail config, even by accident.
+<Files "mail-config.php">
+  Require all denied
+</Files>
+Options -Indexes

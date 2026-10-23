@@ -250,7 +250,7 @@ export function BabyCeoCompanion({ userId }: { userId: string }) {
           ) : null}
           <div
             className={cn(
-              'relative overflow-hidden rounded-full drop-shadow-[0_4px_14px_rgba(30,27,58,0.35)]',
+              'relative overflow-hidden rounded-full drop-shadow-[0_4px_14px_rgba(42,26,48,0.35)]',
               !reducedMotion && 'companion-size-transition',
               isExpanded ? 'h-[4.65rem] w-[4.65rem]' : 'h-12 w-12',
             )}
@@ -322,7 +322,7 @@ function ReactionCard({
     ? cn(
         'max-w-[17rem] rounded-2xl rounded-br-md border p-2.5 shadow-md',
         celebrate
-          ? 'border-[#d4af37]/55 bg-gradient-to-br from-[var(--color-card)] via-[#f8f6ef] to-[var(--color-active-nav)]/40 shadow-[0_8px_24px_rgba(79,70,229,0.22)]'
+          ? 'border-[#d4af37]/55 bg-gradient-to-br from-[var(--color-card)] via-[#f8f6ef] to-[var(--color-active-nav)]/40 shadow-[0_8px_24px_rgba(162,28,175,0.22)]'
           : 'border-[var(--color-border)] bg-[var(--color-card)]',
       )
     : cn(

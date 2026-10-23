@@ -139,18 +139,18 @@ $text = "Hi $firstName,\n\n"
     . "The first time you sign in you will be asked to choose your own password.\n\n"
     . "— Zuvius Lifesciences\n";
 
-$html = '<!doctype html><html><body style="margin:0;padding:24px;background:#f6f7fc;font-family:Segoe UI,Arial,sans-serif;color:#1e1b3a">'
-    . '<table role="presentation" width="100%" style="max-width:520px;margin:0 auto;background:#ffffff;border:1px solid #e0e3f1;border-radius:12px">'
-    . '<tr><td style="background:#4f46e5;color:#ffffff;padding:18px 24px;border-radius:12px 12px 0 0;font-size:18px;font-weight:600">Zuvius Internal</td></tr>'
+$html = '<!doctype html><html><body style="margin:0;padding:24px;background:#f9f6fa;font-family:Segoe UI,Arial,sans-serif;color:#2a1a30">'
+    . '<table role="presentation" width="100%" style="max-width:520px;margin:0 auto;background:#ffffff;border:1px solid #eee3f0;border-radius:12px">'
+    . '<tr><td style="background:#a21caf;color:#ffffff;padding:18px 24px;border-radius:12px 12px 0 0;font-size:18px;font-weight:600">Zuvius Internal</td></tr>'
     . '<tr><td style="padding:24px">'
     . '<p style="margin:0 0 12px">Hi ' . $h($firstName) . ',</p>'
     . '<p style="margin:0 0 16px">Your Zuvius Internal account is ready. Use these details to sign in:</p>'
-    . '<table role="presentation" style="width:100%;background:#eef2ff;border-radius:8px;padding:12px 16px;margin:0 0 16px">'
-    . '<tr><td style="padding:4px 0;color:#5b5f7a">Email</td><td style="padding:4px 0;font-weight:600">' . $h($email) . '</td></tr>'
-    . '<tr><td style="padding:4px 0;color:#5b5f7a">Temporary password</td><td style="padding:4px 0;font-weight:600;font-family:Consolas,monospace">' . $h($temp) . '</td></tr>'
+    . '<table role="presentation" style="width:100%;background:#fae8ff;border-radius:8px;padding:12px 16px;margin:0 0 16px">'
+    . '<tr><td style="padding:4px 0;color:#6b5a70">Email</td><td style="padding:4px 0;font-weight:600">' . $h($email) . '</td></tr>'
+    . '<tr><td style="padding:4px 0;color:#6b5a70">Temporary password</td><td style="padding:4px 0;font-weight:600;font-family:Consolas,monospace">' . $h($temp) . '</td></tr>'
     . '</table>'
-    . '<p style="margin:0 0 20px"><a href="' . $h($appUrl) . '" style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:600">Sign in to Zuvius Internal</a></p>'
-    . '<p style="margin:0;color:#5b5f7a;font-size:13px">The first time you sign in you will be asked to choose your own password.</p>'
+    . '<p style="margin:0 0 20px"><a href="' . $h($appUrl) . '" style="display:inline-block;background:#a21caf;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:600">Sign in to Zuvius Internal</a></p>'
+    . '<p style="margin:0;color:#6b5a70;font-size:13px">The first time you sign in you will be asked to choose your own password.</p>'
     . '</td></tr></table>'
     . '<p style="text-align:center;color:#9aa0a6;font-size:12px;margin-top:16px">Zuvius Lifesciences</p>'
     . '</body></html>';

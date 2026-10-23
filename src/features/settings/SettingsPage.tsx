@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ChangePasswordForm } from '@/components/auth/ChangePasswordForm'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/features/auth/AuthContext'
@@ -62,6 +63,14 @@ export function SettingsPage() {
           <p>Name: {profile?.displayName}</p>
           <p>Email: {profile?.email}</p>
           <p className="capitalize">Role: {profile ? formatUserRole(profile.role) : '—'}</p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Change password</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ChangePasswordForm />
         </CardContent>
       </Card>
       <Card>

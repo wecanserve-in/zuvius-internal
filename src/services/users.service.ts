@@ -31,6 +31,7 @@ import {
   removeDepartmentAdmin,
   removeUserFromDepartmentRoster,
 } from '@/services/departments.service'
+import { DEFAULT_TEMP_PASSWORD } from '@/lib/auth/passwordPolicy'
 import type { AppUser, UserRole } from '@/types'
 
 const usersCol = collection(db, 'users')
@@ -75,6 +76,7 @@ function mapUser(id: string, data: Record<string, unknown>): AppUser {
     departmentIds: Array.isArray(data.departmentIds) ? data.departmentIds.map(String) : [],
     role: (data.role as AppUser['role']) ?? 'member',
     isActive: data.isActive !== false,
+    mustChangePassword: data.mustChangePassword === true,
     phone: data.phone ? String(data.phone) : undefined,
     fcmTokens: Array.isArray(data.fcmTokens) ? data.fcmTokens.map(String) : undefined,
     createdAt: data.createdAt as AppUser['createdAt'],
@@ -157,6 +159,15 @@ export async function listActiveUsers(): Promise<AppUser[]> {
   return snap.docs
     .map((d) => mapUser(d.id, d.data()))
     .filter((u) => u.isActive)
+}
+
+/** The signed-in user finished the first-login password change. */
+export async function clearMustChangePassword(userId: string): Promise<void> {
+  await updateDoc(doc(db, 'users', userId), {
+    mustChangePassword: false,
+    updatedAt: serverTimestamp(),
+  })
+  invalidateCachedUser(userId)
 }
 
 /** Admin directory including deactivated accounts (Team page "Show deactivated"). */
@@ -435,6 +446,7 @@ export async function createUserProfile(
     role: input.role,
     departmentIds: input.departmentIds,
     isActive: true,
+    mustChangePassword: true,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
@@ -447,7 +459,8 @@ export async function createUserProfile(
 
 export interface CreateEmployeeInput {
   email: string
-  password: string
+  /** Defaults to DEFAULT_TEMP_PASSWORD; the employee must change it on first login. */
+  password?: string
   displayName: string
   role: UserRole
   departmentIds: string[]
@@ -469,7 +482,7 @@ export async function createEmployeeComplete(
   }
 
   const email = input.email.trim()
-  const password = input.password
+  const password = input.password ?? DEFAULT_TEMP_PASSWORD
   if (password.length < 6) {
     throw new Error('Password must be at least 6 characters')
   }

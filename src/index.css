@@ -237,6 +237,12 @@ body {
   color: var(--color-success-foreground);
 }
 
+.surface-info {
+  background-color: var(--color-primary-muted);
+  color: var(--color-foreground);
+  border: 1px solid var(--color-primary-border);
+}
+
 .surface-warning {
   border: 1px solid var(--color-warning-border);
   background: var(--color-warning-muted);

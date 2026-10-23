@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { DEFAULT_TEMP_PASSWORD } from '@/lib/auth/passwordPolicy'
 import { TeamMobileList } from '@/components/users/TeamMobileList'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useAuth } from '@/features/auth/AuthContext'
@@ -36,7 +37,6 @@ export function TeamPage() {
 
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [role, setRole] = useState<UserRole>('member')
   const [departmentId, setDepartmentId] = useState('')
   const [saving, setSaving] = useState(false)
@@ -83,7 +83,6 @@ export function TeamPage() {
   const resetForm = () => {
     setDisplayName('')
     setEmail('')
-    setPassword('')
     setRole('member')
     setDepartmentId('')
     setError(null)
@@ -101,14 +100,15 @@ export function TeamPage() {
       const departmentIds = [departmentId]
       await createEmployeeComplete(profile, {
         email,
-        password,
         displayName,
         role,
         departmentIds,
       })
       const names = new Map(departments.map((d) => [d.id, d.name]))
       await syncUserDepartmentChannels(profile, departmentIds, names)
-      setSuccess(`${displayName} was created. They can sign in with the email and password you set.`)
+      setSuccess(
+        `${displayName} was created. They sign in with ${email} and the temporary password ${DEFAULT_TEMP_PASSWORD}.`,
+      )
       resetForm()
       setFormOpen(false)
       refreshUsers()
@@ -142,7 +142,7 @@ export function TeamPage() {
           <DialogHeader>
             <DialogTitle>Create employee</DialogTitle>
             <DialogDescription>
-              Add a colleague with email, password, role, and department.
+              Add a colleague with name, email, role, and department.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreate} className="space-y-3">
@@ -154,15 +154,11 @@ export function TeamPage() {
               <Label>Work email</Label>
               <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
-            <div className="space-y-2">
-              <Label>Temporary password</Label>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                minLength={6}
-                required
-              />
+            <div className="surface-info rounded-md px-3 py-2 text-sm">
+              Temporary password: <span className="font-mono font-semibold">{DEFAULT_TEMP_PASSWORD}</span>
+              <p className="mt-0.5 text-xs text-[var(--color-muted-foreground)]">
+                They must set their own password the first time they sign in.
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Role</Label>

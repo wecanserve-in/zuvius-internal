@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { LoadingScreen } from '@/components/common/LoadingScreen'
 import { useAuth } from '@/features/auth/AuthContext'
+import { FirstLoginPasswordPage } from '@/features/auth/FirstLoginPasswordPage'
 
 export function ProtectedRoute() {
   const { firebaseUser, profile, loading } = useAuth()
@@ -34,6 +35,9 @@ export function ProtectedRoute() {
         </div>
       </div>
     )
+  }
+  if (profile.mustChangePassword) {
+    return <FirstLoginPasswordPage />
   }
   return <Outlet />
 }

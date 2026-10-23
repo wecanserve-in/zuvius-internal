@@ -111,8 +111,12 @@ service cloud.firestore {
         && request.resource.data.isActive == resource.data.isActive
         && request.resource.data.email == resource.data.email
         && request.resource.data.diff(resource.data).changedKeys().hasOnly([
-          'displayName', 'photoURL', 'photoUploadId', 'photoObjectKey', 'phone', 'fcmTokens', 'updatedAt'
-        ]);
+          'displayName', 'photoURL', 'photoUploadId', 'photoObjectKey', 'phone', 'fcmTokens',
+          'mustChangePassword', 'updatedAt'
+        ])
+        // Employees may only clear the first-login flag after changing their password, never set it.
+        && (!('mustChangePassword' in request.resource.data.diff(resource.data).changedKeys())
+          || request.resource.data.mustChangePassword == false);
 
       allow update: if isActiveUser() && isAdmin()
         && !(request.resource.data.role == 'super_admin' && role() != 'super_admin')

@@ -1,6 +1,7 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test'
 import { deactivateTestUsers } from './cleanup'
 import { adminEmail, adminPassword, emailDomain } from './env'
+import { DEFAULT_TEMP_PASSWORD } from '../src/lib/auth/passwordPolicy'
 
 /**
  * Full product walkthrough on the live Firebase project.
@@ -11,7 +12,7 @@ import { adminEmail, adminPassword, emailDomain } from './env'
  */
 
 const runId = Date.now().toString(36).slice(-6)
-const password = `Qa!${runId}${Math.random().toString(36).slice(2, 8)}`
+const password = `Qa${runId}9${Math.random().toString(36).slice(2, 8)}`
 const deptName = `QA Test ${runId}`
 
 type Role = 'department_admin' | 'member'
@@ -44,6 +45,19 @@ async function login(page: Page, email: string, pass: string) {
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page).not.toHaveURL(/\/login/, { timeout: 30_000 })
   await expect(page.getByRole('button', { name: 'Notifications' })).toBeVisible()
+}
+
+/** New employee: sign in with the temporary password, then set their own on the forced screen. */
+async function firstLogin(page: Page, email: string, newPassword: string) {
+  await page.goto('/login')
+  await page.locator('#email').fill(email)
+  await page.locator('#password').fill(DEFAULT_TEMP_PASSWORD)
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await expect(page.getByText('Set your own password')).toBeVisible({ timeout: 30_000 })
+  await page.locator('#pw-new').fill(newPassword)
+  await page.locator('#pw-confirm').fill(newPassword)
+  await page.getByRole('button', { name: 'Save and continue' }).click()
+  await expect(page.getByRole('button', { name: 'Notifications' })).toBeVisible({ timeout: 30_000 })
 }
 
 /** Run one checked area; record pass/fail and keep going. */
@@ -111,7 +125,6 @@ test('full Zuvius Internal flow', async ({ browser }) => {
         const inputs = dialog.locator('input')
         await inputs.nth(0).fill(u.name)
         await inputs.nth(1).fill(u.email)
-        await inputs.nth(2).fill(password)
         await dialog.locator('select').nth(0).selectOption(u.role)
         await dialog.locator('select').nth(1).selectOption({ label: deptName })
         await dialog.getByRole('button', { name: 'Save employee' }).click()
@@ -125,10 +138,24 @@ test('full Zuvius Internal flow', async ({ browser }) => {
     const bob = await openSession(browser, 'bob')
     sessions.push(lead, alice, bob)
 
-    await required('New employees can sign in', async () => {
-      await login(lead.page, users.lead.email, password)
-      await login(alice.page, users.alice.email, password)
-      await login(bob.page, users.bob.email, password)
+    await required('New employees sign in with zuvius@123 and must set their own password', async () => {
+      await firstLogin(lead.page, users.lead.email, password)
+      await firstLogin(alice.page, users.alice.email, password)
+      await firstLogin(bob.page, users.bob.email, password)
+    })
+
+    await area('Changed password works on the next sign-in; temporary one no longer does', async () => {
+      const ctx = await browser.newContext()
+      const p = await ctx.newPage()
+      await p.goto('/login')
+      await p.locator('#email').fill(users.bob.email)
+      await p.locator('#password').fill(DEFAULT_TEMP_PASSWORD)
+      await p.getByRole('button', { name: 'Sign in' }).click()
+      await expect(p).toHaveURL(/\/login/)
+      await expect(p.locator('.surface-danger')).toBeVisible()
+      await login(p, users.bob.email, password)
+      await expect(p.getByText('Set your own password')).toHaveCount(0)
+      await ctx.close()
     })
 
     // ───────────────────────── Tasks ─────────────────────────

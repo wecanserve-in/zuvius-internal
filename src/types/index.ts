@@ -71,6 +71,8 @@ export interface AppUser {
   departmentIds: string[]
   role: UserRole
   isActive: boolean
+  /** Set when an admin creates the account; cleared after the first password change. */
+  mustChangePassword?: boolean
   phone?: string
   fcmTokens?: string[]
   createdAt?: Timestamp

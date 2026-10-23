@@ -1,0 +1,22 @@
+# Single-page app on Apache (Hostinger): serve index.html for every route
+# that is not a real file, so links like /tasks/123 work on refresh.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Force HTTPS
+  RewriteCond %{HTTPS} !=on
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# Always fetch the latest app shell so new deploys show up immediately.
+<IfModule mod_headers.c>
+  <FilesMatch "^(index\.html|firebase-messaging-sw\.js)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+  </FilesMatch>
+</IfModule>
